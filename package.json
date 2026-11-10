@@ -1,0 +1,25 @@
+{
+  "name": "mi-cortex-x-profile",
+  "version": "1.0.0",
+  "description": "",
+  "main": "script.js",
+  "scripts": {
+    "careers:server": "node careers-server.js start",
+    "careers:admin:init": "node careers-server.js admin:create",
+    "careers:admin:key": "node careers-server.js generate-key",
+    "test": "node --test careers-server.test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "devDependencies": {
+    "jsdom": "^31.0.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2"
+  }
+}

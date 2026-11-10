@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Careers Administration | MI CORTEX X INC.</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" type="image/jpeg" href="assets/LOGO.jpg" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="careers-admin.css" />
+  </head>
+  <body data-language="en">
+    <header class="topbar">
+      <div class="container navbar">
+        <a href="index.html" class="brand"><img src="assets/LOGO.jpg" alt="MI CORTEX X INC. logo" /><span>MI CORTEX X INC.<small>BEYOND TECHNOLOGY. BEYOND LIMITS.</small></span></a>
+        <nav class="nav-links" aria-label="Main navigation">
+          <a href="index.html">Home</a>
+          <a href="careers.html">Careers</a>
+        </nav>
+      </div>
+    </header>
+    <main>
+      <section class="page-hero"><div class="container"><div><div class="breadcrumbs">Careers / Administration</div><h1>Careers Applications</h1></div></div></section>
+      <section class="section">
+        <div class="container careers-admin">
+          <div class="careers-admin__warning">
+            Local prototype only. This page and its server bind to this computer; do not expose them to the internet or use them for real recruitment.
+          </div>
+          <section class="card careers-admin__login" data-admin-login-panel>
+            <div class="card-body">
+              <h2>Administrator sign in</h2>
+              <p>Use the single local administrator account initialized on this device.</p>
+              <form data-admin-login>
+                <label>Email address<input name="email" type="email" autocomplete="username" required maxlength="254" /></label>
+                <label>Password<input name="password" type="password" autocomplete="current-password" required maxlength="1024" /></label>
+                <button class="btn btn-primary" type="submit">Sign in</button>
+              </form>
+            </div>
+          </section>
+          <section data-admin-applications-panel hidden>
+            <div class="careers-admin__toolbar">
+              <div><h2>Application records</h2><p data-admin-identity></p></div>
+              <div><button class="btn btn-primary" type="button" data-admin-refresh>Refresh</button><button class="careers-admin__secondary" type="button" data-admin-logout>Sign out</button></div>
+            </div>
+            <p class="careers-admin__message" data-admin-message role="status" aria-live="polite"></p>
+            <div class="careers-admin__metrics" data-admin-metrics></div>
+            <section class="careers-admin__summary">
+              <h3>Applicants by position</h3>
+              <p>Counts include every application. Applying never removes or locks a position.</p>
+              <div class="careers-admin__summary-controls">
+                <label>Company<select data-summary-company><option value="">All companies</option></select></label>
+                <label>Position search<input type="search" data-summary-search placeholder="Filter position titles" /></label>
+                <label class="careers-admin__include-empty"><input type="checkbox" data-summary-empty /> Include positions with no applicants</label>
+              </div>
+              <div class="careers-admin__table-wrap"><table class="careers-admin__table"><thead><tr><th>Company</th><th>Position</th><th>Applicants</th></tr></thead><tbody data-admin-position-summary></tbody></table></div>
+            </section>
+            <section class="careers-admin__records-section">
+              <h3>Applicant records</h3>
+              <div class="careers-admin__filters">
+                <label>Company<select data-filter-company><option value="">All companies</option></select></label>
+                <label>Position<input type="search" data-filter-position placeholder="Filter position titles" /></label>
+                <label>Status<select data-filter-status><option value="">All statuses</option></select></label>
+                <label>Sort<select data-filter-sort><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Applicant name</option></select></label>
+              </div>
+              <div class="careers-admin__compare-toolbar"><button class="careers-admin__secondary" type="button" data-admin-compare disabled>Compare selected applicants</button><span data-compare-hint>Select at least two applicants for the same company and position.</span></div>
+              <div class="careers-admin__comparison" data-admin-comparison hidden></div>
+              <div class="careers-admin__list" data-admin-list></div>
+            </section>
+          </section>
+        </div>
+      </section>
+    </main>
+    <footer class="footer"><div class="container"><small>© <span id="year"></span> MI CORTEX X INC. · Local Careers prototype</small></div></footer>
+    <script src="script.js"></script>
+    <script src="careers-catalogue.js"></script>
+    <script src="careers-admin.js"></script>
+  </body>
+</html>

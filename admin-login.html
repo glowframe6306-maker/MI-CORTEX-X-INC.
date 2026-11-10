@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Administrator Login | MI CORTEX X INC.</title>
+    <meta name="description" content="Secure administrator access for MI CORTEX X INC." />
+    <link rel="icon" type="image/jpeg" href="assets/LOGO.jpg" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="admin-login.css" />
+  </head>
+  <body class="admin-login-page">
+    <main class="admin-login">
+      <a class="admin-login__back" href="index.html"><span aria-hidden="true">←</span> Back to website</a>
+      <section class="admin-login__card" aria-labelledby="admin-login-title">
+        <div class="admin-login__brand">
+          <img src="assets/LOGO.jpg" alt="MI CORTEX X INC. logo" />
+          <p>MI CORTEX X INC.</p>
+        </div>
+        <p class="admin-login__eyebrow">Restricted access · CEO administration</p>
+        <h1 id="admin-login-title">ADMINISTRATOR LOGIN</h1>
+        <p class="admin-login__subtitle">Secure Access Portal</p>
+        <form class="admin-login__form" data-site-admin-login novalidate>
+          <label for="admin-username">Username</label>
+          <input id="admin-username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" minlength="3" maxlength="64" pattern="[A-Za-z0-9._-]{3,64}" required />
+
+          <label for="admin-password">Password</label>
+          <div class="admin-login__password">
+            <input id="admin-password" name="password" type="password" autocomplete="current-password" minlength="14" maxlength="72" required />
+            <button type="button" class="admin-login__toggle" data-password-toggle aria-pressed="false" aria-label="Show password">Show</button>
+          </div>
+
+          <p class="admin-login__error" data-login-error role="alert" hidden></p>
+          <p class="admin-login__status" data-login-status role="status" aria-live="polite"></p>
+          <button class="admin-login__submit" type="submit" data-login-submit>
+            <span data-submit-label>Sign In</span>
+            <span class="admin-login__spinner" aria-hidden="true"></span>
+          </button>
+        </form>
+        <div class="admin-login__security"><span aria-hidden="true"></span> Protected administrator session</div>
+      </section>
+      <p class="admin-login__slogan">BEYOND TECHNOLOGY. BEYOND LIMITS.</p>
+    </main>
+    <script src="admin-login.js"></script>
+  </body>
+</html>

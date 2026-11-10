@@ -1,0 +1,45 @@
+.careers-local/
+
+# Private configuration and credentials
+.env
+.env.*
+!.env.example
+
+# Local administrator and application data
+.careers-local/
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# Dependencies and generated files
+node_modules/
+.vercel/
+dist/
+build/
+coverage/
+
+# Private documents and uploads
+careers-uploads/
+applicant-uploads/
+private-uploads/
+
+# Logs and session files
+*.log
+logs/
+sessions/
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local AI coding-agent configuration
+.claude/
+
+# Previous website backup
+backup-20261105/
+
+# Local coding-agent instructions
+CLAUDE.md
