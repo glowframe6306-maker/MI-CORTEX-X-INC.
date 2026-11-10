@@ -10,7 +10,6 @@
     "careers:serverless:provision": "node scripts/provision-serverless-admin.js",
     "careers:serverless:migrate": "node scripts/migrate-serverless.js --apply-schema",
     "build": "node scripts/build-static.js",
-    "vercel-build": "npm run build",
     "test": "node --test careers-server.test.js serverless/*.test.js"
   },
   "keywords": [],
