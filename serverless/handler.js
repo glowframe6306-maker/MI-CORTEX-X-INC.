@@ -24,6 +24,7 @@ const {
 const { getDatabase } = require('./database');
 
 const MAX_JSON_BYTES = 16 * 1024;
+const MAX_CLEANUP_BATCHES_PER_RUN = 5;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -406,33 +407,48 @@ function createServerlessHandler(options = {}) {
   }
 
   async function cleanup(db, config) {
-    const expiredApplications = await db.query(`
-      SELECT id
-      FROM applications
-      WHERE created_at <= NOW() - ($1 * INTERVAL '1 day')
-      ORDER BY created_at LIMIT 100
-    `, [config.retentionDays]);
-    const expiredIds = expiredApplications.rows.map((row) => row.id);
-    if (expiredIds.length) {
+    let applicationCount = 0;
+    for (let batch = 0; batch < MAX_CLEANUP_BATCHES_PER_RUN; batch += 1) {
+      const expiredApplications = await db.query(`
+        SELECT id
+        FROM applications
+        WHERE created_at <= NOW() - ($1 * INTERVAL '1 day')
+        ORDER BY created_at LIMIT 100
+      `, [config.retentionDays]);
+      const expiredIds = expiredApplications.rows.map((row) => row.id);
+      if (!expiredIds.length) break;
       const documents = await db.query(
         'SELECT blob_pathname FROM documents WHERE application_id = ANY($1::uuid[])',
         [expiredIds]
       );
-      for (const document of documents.rows) await blobs.del(document.blob_pathname, { access: 'private' });
-      await db.query('DELETE FROM applications WHERE id = ANY($1::uuid[])', [expiredIds]);
+      if (documents.rows.length) {
+        await blobs.del(documents.rows.map((document) => document.blob_pathname), { access: 'private' });
+      }
+      const deleted = await db.query(
+        'DELETE FROM applications WHERE id = ANY($1::uuid[]) RETURNING id',
+        [expiredIds]
+      );
+      applicationCount += deleted.rows.length;
     }
-    const staged = await db.query(`
-      SELECT id, blob_pathname FROM documents
-      WHERE application_id IS NULL AND expires_at <= NOW()
-      ORDER BY expires_at LIMIT 500
-    `);
-    for (const document of staged.rows) await blobs.del(document.blob_pathname, { access: 'private' });
-    if (staged.rows.length) {
-      await db.query('DELETE FROM documents WHERE id = ANY($1::uuid[])', [staged.rows.map((row) => row.id)]);
+
+    let stagedDocumentCount = 0;
+    for (let batch = 0; batch < MAX_CLEANUP_BATCHES_PER_RUN; batch += 1) {
+      const staged = await db.query(`
+        SELECT id, blob_pathname FROM documents
+        WHERE application_id IS NULL AND expires_at <= NOW()
+        ORDER BY expires_at LIMIT 500
+      `);
+      if (!staged.rows.length) break;
+      await blobs.del(staged.rows.map((document) => document.blob_pathname), { access: 'private' });
+      const deleted = await db.query(
+        'DELETE FROM documents WHERE id = ANY($1::uuid[]) RETURNING id',
+        [staged.rows.map((row) => row.id)]
+      );
+      stagedDocumentCount += deleted.rows.length;
     }
     await db.query('DELETE FROM sessions WHERE expires_at <= NOW()');
     await db.query("DELETE FROM rate_limits WHERE window_started_at < NOW() - INTERVAL '1 day'");
-    return { applications: expiredIds.length, stagedDocuments: staged.rows.length };
+    return { applications: applicationCount, stagedDocuments: stagedDocumentCount };
   }
 
   async function handle(request) {

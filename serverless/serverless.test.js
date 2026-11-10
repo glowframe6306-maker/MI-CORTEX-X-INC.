@@ -50,6 +50,7 @@ async function createContext() {
   const storedBlobs = new Map();
   const deletedBlobs = [];
   let tokenOptions;
+  let failNextBlobDelete = false;
   const dummyCEOHash = await bcrypt.hash('unmatchable-test-password', 4);
   const blobs = {
     async handleUpload({ body, onBeforeGenerateToken, onUploadCompleted }) {
@@ -73,9 +74,15 @@ async function createContext() {
         blob: { pathname, size: file.content.length }
       };
     },
-    async del(pathname) {
-      deletedBlobs.push(pathname);
-      storedBlobs.delete(pathname);
+    async del(pathnames) {
+      if (failNextBlobDelete) {
+        failNextBlobDelete = false;
+        throw new Error('Mock Blob deletion failed.');
+      }
+      for (const pathname of Array.isArray(pathnames) ? pathnames : [pathnames]) {
+        deletedBlobs.push(pathname);
+        storedBlobs.delete(pathname);
+      }
     }
   };
   const handler = createServerlessHandler({
@@ -119,6 +126,7 @@ async function createContext() {
     storedBlobs,
     deletedBlobs,
     getTokenOptions: () => tokenOptions,
+    failNextBlobDelete: () => { failNextBlobDelete = true; },
     handler,
     createAnotherHandler,
     call,
@@ -433,6 +441,104 @@ test('application gate, origin validation, malformed uploads and protected clean
     assert.ok(context.deletedBlobs.includes(expiredPath));
   } finally {
     process.env.CAREERS_OPEN_AT = '2020-01-01T00:00:00.000Z';
+    await closeContext(context);
+  }
+});
+
+test('cleanup drains expired application and staged-document batches', async () => {
+  const context = await createContext();
+  try {
+    const applicationIds = Array.from({ length: 501 }, () => crypto.randomUUID());
+    const applicationValues = applicationIds.map((_, index) => {
+      const parameter = index + 1;
+      return `($${parameter}, 'parent', 'MI CORTEX X INC.', 'Chief Technology Officer',
+        'Executive', 'encrypted-test-value', NOW(), NOW() - INTERVAL '91 days',
+        NOW() - INTERVAL '91 days')`;
+    });
+    await context.database.query(`
+      INSERT INTO applications (
+        id, company_id, company_name, position_title, position_category,
+        encrypted_applicant, privacy_consent_at, created_at, updated_at
+      ) VALUES ${applicationValues.join(',')}
+    `, applicationIds);
+    await context.database.query(
+      "UPDATE applications SET created_at = NOW() - INTERVAL '92 days' WHERE id = $1",
+      [applicationIds[0]]
+    );
+    const expiredApplicationDocumentId = crypto.randomUUID();
+    const expiredApplicationPath = `private-careers/expired/${expiredApplicationDocumentId}.pdf`;
+    await context.database.query(`
+      INSERT INTO documents (
+        id, application_id, blob_pathname, encrypted_metadata, size_bytes,
+        upload_complete, created_at, expires_at
+      ) VALUES ($1, $2, $3, 'encrypted-expired-metadata', 1, TRUE,
+        NOW() - INTERVAL '92 days', NOW() - INTERVAL '1 day')
+    `, [expiredApplicationDocumentId, applicationIds[0], expiredApplicationPath]);
+    context.storedBlobs.set(expiredApplicationPath, { content: Buffer.from('%PDF-expired') });
+
+    const stagedDocumentIds = Array.from({ length: 2501 }, () => crypto.randomUUID());
+    const stagedPathnames = stagedDocumentIds.map((id) => `private-careers/expired/${id}.pdf`);
+    const stagedValues = stagedDocumentIds.map((_, index) => {
+      const idParameter = index * 2 + 1;
+      const pathnameParameter = idParameter + 1;
+      return `($${idParameter}, NULL, NULL, $${pathnameParameter}, 'encrypted-test-metadata',
+        1, TRUE, NOW() - INTERVAL '2 days', NOW() - INTERVAL '1 day')`;
+    });
+    const stagedParameters = stagedDocumentIds.flatMap((id, index) => [id, stagedPathnames[index]]);
+    await context.database.query(`
+      INSERT INTO documents (
+        id, application_id, upload_batch_id, blob_pathname, encrypted_metadata,
+        size_bytes, upload_complete, created_at, expires_at
+      ) VALUES ${stagedValues.join(',')}
+    `, stagedParameters);
+
+    const activeApplicationId = crypto.randomUUID();
+    const activeDocumentId = crypto.randomUUID();
+    const activePathname = `private-careers/active/${activeDocumentId}.pdf`;
+    await context.database.query(`
+      INSERT INTO applications (
+        id, company_id, company_name, position_title, position_category,
+        encrypted_applicant, privacy_consent_at, created_at, updated_at
+      ) VALUES ($1, 'parent', 'MI CORTEX X INC.', 'Chief Technology Officer',
+        'Executive', 'encrypted-active-value', NOW(), NOW(), NOW())
+    `, [activeApplicationId]);
+    await context.database.query(`
+      INSERT INTO documents (
+        id, application_id, blob_pathname, encrypted_metadata, size_bytes,
+        upload_complete, created_at, expires_at
+      ) VALUES ($1, $2, $3, 'encrypted-active-metadata', 1, TRUE, NOW(), NOW() + INTERVAL '1 day')
+    `, [activeDocumentId, activeApplicationId, activePathname]);
+    context.storedBlobs.set(activePathname, { content: Buffer.from('%PDF-active') });
+
+    context.failNextBlobDelete();
+    const failed = await context.call('/api/cron/cleanup', {
+      headers: { authorization: `Bearer ${process.env.CRON_SECRET}` }
+    });
+    assert.equal(failed.status, 500);
+    assert.equal((await context.database.query('SELECT COUNT(*)::integer AS count FROM applications')).rows[0].count, 502);
+    assert.equal((await context.database.query('SELECT COUNT(*)::integer AS count FROM documents')).rows[0].count, 2503);
+    assert.ok(context.storedBlobs.has(expiredApplicationPath));
+
+    const response = await context.call('/api/cron/cleanup', {
+      headers: { authorization: `Bearer ${process.env.CRON_SECRET}` }
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { applications: 500, stagedDocuments: 2500 });
+    assert.equal((await context.database.query('SELECT COUNT(*)::integer AS count FROM applications')).rows[0].count, 2);
+    assert.equal((await context.database.query('SELECT COUNT(*)::integer AS count FROM documents')).rows[0].count, 2);
+    assert.equal(context.deletedBlobs.length, 2501);
+    assert.ok(context.storedBlobs.has(activePathname));
+    assert.ok(!context.storedBlobs.has(expiredApplicationPath));
+
+    const finalBatch = await context.call('/api/cron/cleanup', {
+      headers: { authorization: `Bearer ${process.env.CRON_SECRET}` }
+    });
+    assert.deepEqual(await finalBatch.json(), { applications: 1, stagedDocuments: 1 });
+    assert.equal((await context.database.query('SELECT COUNT(*)::integer AS count FROM applications')).rows[0].count, 1);
+    assert.equal((await context.database.query('SELECT COUNT(*)::integer AS count FROM documents')).rows[0].count, 1);
+    assert.equal(context.deletedBlobs.length, 2502);
+    assert.ok(context.storedBlobs.has(activePathname));
+  } finally {
     await closeContext(context);
   }
 });

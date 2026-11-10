@@ -100,7 +100,7 @@ Required Vercel Environment Variable names:
 - `CAREERS_RECRUITMENT_APPROVED` (optional; must be exactly `true` to enable recruitment after the opening date)
 - `CAREERS_RETENTION_DAYS` (optional; defaults to 90 and is limited to 30–365)
 
-Connect the private Blob store to the Vercel project so Vercel provides `BLOB_STORE_ID` and `VERCEL_OIDC_TOKEN` to Functions. `BLOB_READ_WRITE_TOKEN` is also required by the server-side `handleUpload` route to issue browser upload tokens; add it through the Blob connection's read-write-token option. Never copy token values into source or commit them. Vercel's scheduled cleanup function also requires `CRON_SECRET`.
+Connect the private Blob store to the Vercel project so Vercel provides `BLOB_STORE_ID` and the OIDC token through the function request context. Do not configure a static `VERCEL_OIDC_TOKEN`; the Blob SDK reads the runtime-issued token and may fall back to that environment variable. `BLOB_READ_WRITE_TOKEN` is also required by the server-side `handleUpload` route to issue browser upload tokens; add it through the Blob connection's read-write-token option. Never copy token values into source or commit them. Vercel's scheduled cleanup function also requires `CRON_SECRET`. Each cleanup invocation processes at most five application batches of 100 and five staged-document batches of 500; if a run times out or storage deletion fails, remaining records are eligible for the next scheduled run.
 
 Provisioning is intentionally manual and is not run by the build or deployment:
 
