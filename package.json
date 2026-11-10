@@ -7,7 +7,11 @@
     "careers:server": "node careers-server.js start",
     "careers:admin:init": "node careers-server.js admin:create",
     "careers:admin:key": "node careers-server.js generate-key",
-    "test": "node --test careers-server.test.js"
+    "careers:serverless:provision": "node scripts/provision-serverless-admin.js",
+    "careers:serverless:migrate": "node scripts/migrate-serverless.js --apply-schema",
+    "build": "node scripts/build-static.js",
+    "vercel-build": "npm run build",
+    "test": "node --test careers-server.test.js serverless/*.test.js"
   },
   "keywords": [],
   "author": "",
@@ -17,9 +21,16 @@
     "node": ">=24.0.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.3.14",
+    "esbuild": "^0.25.0",
     "jsdom": "^31.0.0"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.1",
+    "@vercel/blob": "^2.9.0",
     "bcryptjs": "^3.0.2"
+  },
+  "overrides": {
+    "zod": "^4.6.7"
   }
 }

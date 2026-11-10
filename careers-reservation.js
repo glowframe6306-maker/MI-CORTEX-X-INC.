@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const applicationSuccess = dialog?.querySelector('[data-application-success]');
   const submitButton = dialog?.querySelector('[data-application-submit]');
   const documentInput = dialog?.querySelector('[data-application-documents]');
+  let serviceStatus = null;
 
   if (
     !(dialog instanceof HTMLDialogElement)
@@ -368,10 +369,10 @@ document.addEventListener('DOMContentLoaded', () => {
     'Final decision and any formal offer through approved channels.'
   ];
   const supportingDocuments = [
-    'A current CV or resume in PDF format may be attached in the local prototype.',
+    'A current CV or resume in PDF format may be attached to a future application.',
     'Education or professional qualification evidence may be requested where relevant to the position.',
     'A portfolio or work samples may be relevant for design, software, research or project-based roles; PDF only.',
-    'The local prototype accepts up to 3 PDF documents, each no larger than 10 MB; files are encrypted locally but are not malware-scanned.'
+    'Up to 3 PDF documents, each no larger than 10 MB, may be attached; files are stored privately and are not malware-scanned.'
   ];
 
   const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({
@@ -590,12 +591,16 @@ document.addEventListener('DOMContentLoaded', () => {
     continueButton.disabled = true;
     continueButton.textContent = 'CHECKING AVAILABILITY…';
     closedTitle.textContent = 'APPLICATIONS ARE NOT OPEN';
-    closedMessage.textContent = 'The server-side date and official-approval gates must both be satisfied before this local prototype accepts applications.';
+    closedMessage.textContent = 'The server-side date and official-approval gates must both be satisfied before applications can be submitted.';
     closedNotice.hidden = true;
     try {
       const response = await fetch('/api/careers/status', { headers: { Accept: 'application/json' } });
-      if (!response.ok) throw new Error('The local Careers service is unavailable.');
+      if (!response.ok) throw new Error('The Careers service is unavailable.');
       const status = await response.json();
+      serviceStatus = status;
+      dialog.querySelectorAll('[data-careers-retention]').forEach((element) => {
+        element.textContent = `${status.retentionDays} days`;
+      });
       if (status.enabled === true) {
         closedNotice.hidden = true;
         applicationError.hidden = true;
@@ -609,11 +614,13 @@ document.addEventListener('DOMContentLoaded', () => {
         dateStyle: 'long',
         timeZone: 'Asia/Colombo'
       }).format(new Date(status.opensAt));
-      closedMessage.textContent = `Applications are disabled until ${openingDate} (Asia/Colombo) and until official recruitment approval is enabled on the local server. No application details were collected.`;
+      closedMessage.textContent = status.localPrototype
+        ? `Applications are disabled until ${openingDate} (Asia/Colombo) and until official recruitment approval is enabled on the local server. No application details were collected.`
+        : `Applications are disabled until ${openingDate} (Asia/Colombo) and until official recruitment approval is enabled. No application details were collected.`;
       closedNotice.hidden = false;
       closedNotice.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     } catch (error) {
-      closedTitle.textContent = 'LOCAL CAREERS SERVICE UNAVAILABLE';
+      closedTitle.textContent = 'CAREERS SERVICE UNAVAILABLE';
       closedMessage.textContent = `${error.message} No application details were collected.`;
       closedNotice.hidden = false;
       closedNotice.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -642,6 +649,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     const documents = [];
+    const directUploads = serviceStatus?.directUploads === true;
+    const batchId = directUploads ? crypto.randomUUID() : null;
     for (const file of files) {
       if (
         file.size > 10 * 1024 * 1024
@@ -652,12 +661,17 @@ document.addEventListener('DOMContentLoaded', () => {
         applicationError.hidden = false;
         return;
       }
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      if (new TextDecoder().decode(bytes.subarray(0, 5)) !== '%PDF-') {
+      const header = new Uint8Array(await file.slice(0, 5).arrayBuffer());
+      if (new TextDecoder().decode(header) !== '%PDF-') {
         applicationError.textContent = 'Each supporting document must contain a valid PDF file.';
         applicationError.hidden = false;
         return;
       }
+      if (directUploads) {
+        documents.push({ file, id: crypto.randomUUID() });
+        continue;
+      }
+      const bytes = new Uint8Array(await file.arrayBuffer());
       let binary = '';
       for (let offset = 0; offset < bytes.length; offset += 0x8000) {
         binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
@@ -680,8 +694,18 @@ document.addEventListener('DOMContentLoaded', () => {
       documents
     };
     submitButton.disabled = true;
-    submitButton.textContent = 'SUBMITTING…';
+    submitButton.textContent = directUploads && documents.length ? 'UPLOADING…' : 'SUBMITTING…';
     try {
+      if (directUploads && documents.length) {
+        if (typeof window.careersPrivateUpload !== 'function') {
+          throw new Error('Secure document uploads are unavailable. Please try again later.');
+        }
+        for (const document of documents) {
+          await window.careersPrivateUpload(document.file, batchId, document.id);
+        }
+        payload.documents = documents.map(({ id }) => ({ id }));
+        submitButton.textContent = 'SUBMITTING…';
+      }
       const response = await fetch('/api/careers/applications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -690,14 +714,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'The application could not be submitted.');
       applicationForm.reset();
-      applicationSuccess.textContent = `${result.message} Reference: ${result.id}. This local prototype stores the encrypted application and any PDFs only on this device and deletes them within 90 days. This position remains available for other applicants.`;
+      applicationSuccess.textContent = serviceStatus?.localPrototype
+        ? `${result.message} Reference: ${result.id}. This local prototype stores the encrypted application and any PDFs only on this device and deletes them within 90 days. This position remains available for other applicants.`
+        : `${result.message} Reference: ${result.id}. Application information and any PDFs are retained for up to ${serviceStatus?.retentionDays || 90} days. This position remains available for other applicants.`;
       applicationSuccess.hidden = false;
     } catch (error) {
       applicationError.textContent = error.message || 'The application could not be submitted.';
       applicationError.hidden = false;
     } finally {
       submitButton.disabled = false;
-      submitButton.textContent = 'SUBMIT LOCAL TEST APPLICATION';
+      submitButton.textContent = 'SUBMIT APPLICATION';
     }
   });
 });

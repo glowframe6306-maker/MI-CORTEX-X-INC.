@@ -265,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
       remove.type = 'button';
       remove.textContent = 'Delete application';
       remove.addEventListener('click', async () => {
-        if (!window.confirm('Permanently delete this application and its PDF documents from the local database?')) return;
+        if (!window.confirm('Permanently delete this application and its PDF documents?')) return;
         try {
           await request(`/api/admin/applications/${encodeURIComponent(application.id)}`, { method: 'DELETE' });
           selectedIds.delete(application.id);

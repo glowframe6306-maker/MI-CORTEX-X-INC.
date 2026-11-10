@@ -54,9 +54,9 @@
               <h3 id="careers-opening-title">FUTURE RECRUITMENT — 2029</h3>
               <p class="careers-opening__date">Planned opening date <strong>1 January 2029</strong></p>
               <p>Asia/Colombo timezone. Applications will not be accepted before this date. Future opportunities will depend on official approval and position availability.</p>
-              <a class="careers-admin-entry" href="careers-admin.html">Local Careers administration</a>
+              <a class="careers-admin-entry" href="careers-admin.html">Careers administration</a>
               <button class="btn btn-primary careers-reserve-button" type="button" data-careers-reserve>RESERVE YOUR POSITION</button>
-              <p class="careers-reserve-button__note">Explore proposed roles. This local prototype accepts applications only after the date and official-approval gates are enabled.</p>
+              <p class="careers-reserve-button__note">Explore proposed roles. Applications are accepted only after the date and official-approval gates are enabled.</p>
             </div>
           </aside>
         </div>
@@ -276,10 +276,10 @@
         <div class="container">
           <div class="careers-application-card">
             <div>
-              <p class="eyebrow">Local prototype — server-side gates apply</p>
+              <p class="eyebrow">Server-side application controls apply</p>
               <h2 id="careers-application-title">Application information</h2>
               <p>When recruitment officially opens, the application process may ask for a preferred Sub-Company, career category and position; educational and professional qualifications; relevant experience and technical skills; contact information; and a CV or resume. A portfolio or work samples may be relevant for some roles.</p>
-              <p class="careers-application-card__notice">Application submissions are disabled unless the server-side date gate and official-approval setting are both enabled. When enabled for local testing, the prototype accepts encrypted submissions and PDF documents only.</p>
+              <p class="careers-application-card__notice">Application submissions are disabled unless the server-side date gate and official-approval setting are both enabled. When enabled, the service accepts application details and PDF documents only.</p>
             </div>
             <div class="careers-application-card__date">
               <span>Planned opening</span>
@@ -351,13 +351,13 @@
               <label><input type="checkbox" data-reservation-agreement required /> I have reviewed the selected potential position and its proposed requirements.</label>
               <label><input type="checkbox" data-reservation-agreement required /> I understand this is a future recruitment concept, not a current vacancy, reservation, or offer of employment.</label>
               <label><input type="checkbox" data-reservation-agreement required /> I understand that any information supplied in a future application must be accurate and that applying would not guarantee selection or employment.</label>
-              <label><input type="checkbox" data-reservation-agreement required /> I understand the local prototype's data handling: encrypted local storage for up to 90 days, no CV uploads, and no use of submissions outside this prototype.</label>
+              <label><input type="checkbox" data-reservation-agreement required /> I understand that application information is processed only for recruitment purposes and retained for the period stated on the application form.</label>
             </fieldset>
             <p class="careers-reservation__agreement-error" data-agreement-error role="alert" hidden>Please confirm each statement before continuing.</p>
             <button class="btn btn-primary careers-reservation__continue" type="button" data-reservation-continue>CONTINUE</button>
             <p class="careers-reservation__application-closed" data-application-closed hidden>
               <strong data-application-closed-title>APPLICATIONS ARE NOT OPEN</strong><br />
-              <span data-application-closed-message>The server-side date and official-approval gates must both be satisfied before this local prototype accepts applications.</span>
+              <span data-application-closed-message>The server-side date and official-approval gates must both be satisfied before applications can be submitted.</span>
             </p>
           </section>
           <section class="careers-reservation__stage" data-reservation-stage="application" hidden>
@@ -366,7 +366,7 @@
               <button class="careers-reservation__text-button" type="button" data-reservation-back="requirements">← Review requirements</button>
             </div>
             <div class="careers-application__notice">
-              Local-only prototype. Your name, email, optional phone number, statement and attached PDFs are encrypted in the local database and automatically deleted after 90 days. Up to 3 PDF documents are accepted, each up to 10 MB. Do not use this prototype for real recruitment or sensitive information; uploaded files are not malware-scanned.
+              Your name, email, optional phone number, statement and attached PDFs are handled for recruitment purposes and automatically deleted within <span data-careers-retention>90 days</span>. Up to 3 PDF documents are accepted, each up to 10 MB. Uploaded files are not malware-scanned.
               <a href="privacy.html" target="_blank" rel="noopener">Read the recruitment privacy notice</a>.
             </div>
             <form class="careers-application__form" data-application-form novalidate>
@@ -384,7 +384,7 @@
               </label>
               <label class="careers-application__wide">CV and supporting documents (PDF only)
                 <input name="documents" type="file" accept=".pdf,application/pdf" multiple data-application-documents />
-                <span>Optional. Up to 3 PDFs; each file must be 10 MB or smaller. Files are encrypted locally and not scanned for malware.</span>
+                <span>Optional. Up to 3 PDFs; each file must be 10 MB or smaller. Files are stored privately and are not scanned for malware.</span>
               </label>
               <label class="careers-application__consent careers-application__wide">
                 <input name="ageConfirmed" type="checkbox" required />
@@ -392,10 +392,10 @@
               </label>
               <label class="careers-application__consent careers-application__wide">
                 <input name="privacyConsent" type="checkbox" required />
-                I consent to the local processing of the information above and attached PDFs for this application, including encrypted storage and automatic deletion within 90 days.
+                I consent to the processing of the information above and attached PDFs for this application, including secure storage and deletion within <span data-careers-retention>90 days</span>.
               </label>
               <p class="careers-reservation__agreement-error careers-application__wide" data-application-error role="alert" hidden></p>
-              <button class="btn btn-primary careers-application__wide" type="submit" data-application-submit>SUBMIT LOCAL TEST APPLICATION</button>
+              <button class="btn btn-primary careers-application__wide" type="submit" data-application-submit>SUBMIT APPLICATION</button>
               <p class="careers-reservation__application-closed careers-application__wide" data-application-success role="status" hidden></p>
             </form>
           </section>
@@ -409,6 +409,7 @@
     </footer>
     <script src="script.js"></script>
     <script src="careers-catalogue.js"></script>
+    <script src="careers-upload.js"></script>
     <script src="careers-reservation.js"></script>
   </body>
 </html>
