@@ -74,7 +74,7 @@ The Careers administration page and its email/password session are separate from
 
 ## Vercel serverless deployment
 
-The public website is built into `dist/`. `admin.html` and `admin-login.html` are deliberately excluded from static output; Vercel includes them only in the server function, which serves `/admin` and `/admin/dashboard` after checking the persistent CEO session. The standalone Careers administration page remains independently available, and every Careers record API requires the separate Careers Admin session.
+The public website is built into `dist/`. `admin.html` and `admin-login.html` are deliberately excluded from static output; Vercel includes them only in the server function, which serves `/admin` and `/admin/dashboard` after checking the persistent CEO session. The local-only Careers administration prototype (`careers-admin.html`, `careers-admin.js`, and `careers-admin.css`) is also excluded from public output. The serverless Careers record APIs require the separate Careers Admin session.
 
 Deployment configuration:
 

@@ -6,8 +6,16 @@ const esbuild = require('esbuild');
 
 const root = path.resolve(__dirname, '..');
 const output = path.join(root, 'dist');
-const excludedHtml = new Set(['admin.html', 'admin-login.html']);
-const excludedScripts = new Set(['careers-server.js', 'careers-server.test.js', 'careers-upload-entry.js']);
+const excludedFiles = new Set([
+  'admin.html',
+  'admin-login.html',
+  'careers-admin.html',
+  'careers-admin.css',
+  'careers-admin.js',
+  'careers-server.js',
+  'careers-server.test.js',
+  'careers-upload-entry.js'
+]);
 const staticExtensions = new Set(['.css', '.html', '.ico', '.jpeg', '.jpg', '.js', '.png', '.svg', '.webp']);
 
 function copyStaticFiles(source, destination) {
@@ -23,7 +31,7 @@ function copyStaticFiles(source, destination) {
     }
     if (!entry.isFile()) continue;
     const extension = path.extname(entry.name).toLowerCase();
-    if (!staticExtensions.has(extension) || excludedHtml.has(entry.name) || excludedScripts.has(entry.name)) continue;
+    if (!staticExtensions.has(extension) || excludedFiles.has(entry.name)) continue;
     fs.copyFileSync(sourcePath, destinationPath);
   }
 }
@@ -43,12 +51,12 @@ async function build() {
     minify: true,
     legalComments: 'eof'
   });
-  for (const privateFile of ['admin.html', 'admin-login.html', 'careers-server.js', 'careers-server.test.js']) {
+  for (const privateFile of excludedFiles) {
     if (fs.existsSync(path.join(output, privateFile))) {
       throw new Error(`The public build unexpectedly contains ${privateFile}.`);
     }
   }
-  console.log('Static website built in dist; private CEO pages are excluded from public output.');
+  console.log('Static website built in dist; private admin pages and local server files are excluded from public output.');
 }
 
 build().catch((error) => {
