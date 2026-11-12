@@ -16,6 +16,8 @@ This guide is for the temporary, CEO-allowlisted, read-only Neon diagnostic. It 
 
 The browser receives the public Client ID to initialize Google Identity Services. The server verifies the returned ID token using `google-auth-library`, including its signature, issuer, audience, expiry, nonce, verified-email claim, and exact operator email. No Google token is stored or logged.
 
+Authentication failures may produce one fixed reason code in server logs for internal diagnosis. The code does not include request data, token claims, email addresses, cookies, nonces, or exception messages, and it is never returned to the unauthenticated client. Public authorization failures remain generic.
+
 ## Upstash Redis
 
 Create or select an organization-approved Upstash Redis database, then configure these names in the approved runtime environment:

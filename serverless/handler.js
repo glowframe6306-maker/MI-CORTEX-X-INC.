@@ -119,7 +119,8 @@ function createServerlessHandler(options = {}) {
     expectedOrigin: options.diagnosticExpectedOrigin,
     googleClient: options.googleClient,
     redisFactory: options.redisFactory,
-    runDatabaseDiagnostic: options.runDatabaseDiagnostic
+    runDatabaseDiagnostic: options.runDatabaseDiagnostic,
+    authFailureLogger: options.diagnosticAuthFailureLogger
   });
   const dummyPasswordHash = options.dummyPasswordHash
     ? Promise.resolve(options.dummyPasswordHash)

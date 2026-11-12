@@ -17,6 +17,19 @@ const OPERATOR_RATE_LIMIT = 3;
 const MAX_BODY_BYTES = 16 * 1024;
 const PRODUCTION_ORIGIN = 'https://mi-cortex-x-inc.vercel.app';
 const LOCAL_ORIGIN = 'http://localhost:4173';
+const AUTH_FAILURE_REASONS = new Set([
+  'ORIGIN_REJECTED',
+  'CHALLENGE_COOKIE_MISSING',
+  'CHALLENGE_INVALID',
+  'TOKEN_VERIFICATION_FAILED',
+  'TOKEN_AUDIENCE_REJECTED',
+  'TOKEN_EXPIRED',
+  'NONCE_REJECTED',
+  'EMAIL_NOT_VERIFIED',
+  'OPERATOR_NOT_AUTHORIZED',
+  'REDIS_VALIDATION_FAILED',
+  'UNCLASSIFIED_AUTH_FAILURE'
+]);
 
 const CONSUME_NONCE_SCRIPT = `
 local value = redis.call('GET', KEYS[1])
@@ -41,6 +54,9 @@ class DiagnosticAuthError extends Error {
     this.category = category;
     this.authenticationSucceeded = Boolean(details.authenticationSucceeded);
     this.nonceConsumed = Boolean(details.nonceConsumed);
+    this.internalReasonCode = AUTH_FAILURE_REASONS.has(details.internalReasonCode)
+      ? details.internalReasonCode
+      : null;
   }
 }
 
@@ -55,6 +71,21 @@ function jsonResponse(status, value, headers = {}) {
   });
 }
 
+function redisValidationError() {
+  return new DiagnosticAuthError(503, 'authorization_unavailable', {
+    internalReasonCode: 'REDIS_VALIDATION_FAILED'
+  });
+}
+
+function logAuthFailure(error, logger) {
+  if (AUTH_FAILURE_REASONS.has(error.internalReasonCode)) {
+    logger(error.internalReasonCode);
+    return;
+  }
+  if (error instanceof DiagnosticAuthError && error.category !== 'authorization_failed') return;
+  logger('UNCLASSIFIED_AUTH_FAILURE');
+}
+
 function nonceCookie(value, maxAge) {
   return `${CHALLENGE_COOKIE}=${encodeURIComponent(value)}; Path=${DIAGNOSTIC_PATH}; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Strict`;
 }
@@ -64,12 +95,12 @@ function parseCookie(request, name) {
     const separator = part.indexOf('=');
     if (separator < 0 || part.slice(0, separator).trim() !== name) continue;
     try {
-      return decodeURIComponent(part.slice(separator + 1).trim());
+      return { found: true, value: decodeURIComponent(part.slice(separator + 1).trim()) };
     } catch {
-      return '';
+      return { found: true, value: null };
     }
   }
-  return '';
+  return { found: false, value: null };
 }
 
 function getPath(request) {
@@ -203,19 +234,38 @@ function createDiagnosticAuthHandler(options = {}) {
   const googleClient = options.googleClient || new OAuth2Client();
   const redisFactory = options.redisFactory || ((url, token) => new Redis({ url, token }));
   const runDatabaseDiagnostic = options.runDatabaseDiagnostic || (() => diagnoseDatabaseReadOnlyQuery());
+  const authFailureLogger = typeof options.authFailureLogger === 'function'
+    ? options.authFailureLogger
+    : (reasonCode) => console.error(`[diagnostic-auth] ${reasonCode}`);
   let redisClient;
+
+  async function runRedisOperation(operation) {
+    try {
+      return await operation();
+    } catch {
+      throw redisValidationError();
+    }
+  }
 
   function getRedis() {
     if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) {
       throw new DiagnosticAuthError(503, 'authorization_unavailable');
     }
-    if (!redisClient) redisClient = redisFactory(env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN);
+    if (!redisClient) {
+      try {
+        redisClient = redisFactory(env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN);
+      } catch {
+        throw redisValidationError();
+      }
+    }
     return redisClient;
   }
 
   function requireOrigin(request) {
     if (request.headers.get('origin') !== expectedOrigin) {
-      throw new DiagnosticAuthError(403, 'authorization_failed');
+      throw new DiagnosticAuthError(403, 'authorization_failed', {
+        internalReasonCode: 'ORIGIN_REJECTED'
+      });
     }
   }
 
@@ -229,8 +279,16 @@ function createDiagnosticAuthHandler(options = {}) {
   }
 
   async function enforceRateLimit(redis, key, limit, windowSeconds = RATE_WINDOW_SECONDS) {
-    const count = Number(await redis.eval(INCREMENT_RATE_SCRIPT, [key], [String(windowSeconds)]));
-    if (!Number.isSafeInteger(count) || count > limit) {
+    const value = await runRedisOperation(
+      () => redis.eval(INCREMENT_RATE_SCRIPT, [key], [String(windowSeconds)])
+    );
+    const count = typeof value === 'number'
+      ? value
+      : typeof value === 'string' && /^\d+$/.test(value)
+        ? Number(value)
+        : NaN;
+    if (!Number.isSafeInteger(count) || count < 1) throw redisValidationError();
+    if (count > limit) {
       throw new DiagnosticAuthError(429, 'rate_limited');
     }
   }
@@ -254,12 +312,14 @@ function createDiagnosticAuthHandler(options = {}) {
       const nonce = crypto.randomBytes(32).toString('base64url');
       const challengeId = crypto.randomBytes(32).toString('base64url');
       const nonceHash = crypto.createHash('sha256').update(nonce).digest('hex');
-      const result = await redis.set(
-        `diagnostic:nonce:${challengeId}`,
-        nonceHash,
-        { ex: CHALLENGE_TTL_SECONDS, nx: true }
+      const result = await runRedisOperation(
+        () => redis.set(
+          `diagnostic:nonce:${challengeId}`,
+          nonceHash,
+          { ex: CHALLENGE_TTL_SECONDS, nx: true }
+        )
       );
-      if (result !== 'OK') throw new DiagnosticAuthError(503, 'authorization_unavailable');
+      if (result !== 'OK') throw redisValidationError();
 
       return jsonResponse(200, { nonce }, {
         'Set-Cookie': nonceCookie(challengeId, CHALLENGE_TTL_SECONDS)
@@ -267,7 +327,10 @@ function createDiagnosticAuthHandler(options = {}) {
     } catch (error) {
       const authError = error instanceof DiagnosticAuthError
         ? error
-        : new DiagnosticAuthError(503, 'authorization_unavailable');
+        : new DiagnosticAuthError(503, 'authorization_unavailable', {
+          internalReasonCode: 'UNCLASSIFIED_AUTH_FAILURE'
+        });
+      logAuthFailure(authError, authFailureLogger);
       return jsonResponse(authError.status, { authenticationSucceeded: false, nonceConsumed: false, errorCategory: authError.category }, {
         'Set-Cookie': nonceCookie('', 0)
       });
@@ -285,29 +348,68 @@ function createDiagnosticAuthHandler(options = {}) {
       const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: clientId });
       payload = ticket && ticket.getPayload();
     } catch {
-      throw new DiagnosticAuthError(401, 'authorization_failed');
+      throw new DiagnosticAuthError(401, 'authorization_failed', {
+        internalReasonCode: 'TOKEN_VERIFICATION_FAILED'
+      });
     }
 
-    if (
-      !payload
-      || !['accounts.google.com', 'https://accounts.google.com'].includes(payload.iss)
-      || payload.aud !== clientId
-      || typeof payload.exp !== 'number'
-      || payload.exp * 1000 <= Date.now()
-      || typeof payload.nonce !== 'string'
-      || payload.email_verified !== true
-      || payload.email !== operatorEmail
-    ) {
-      throw new DiagnosticAuthError(401, 'authorization_failed');
+    if (!payload || !['accounts.google.com', 'https://accounts.google.com'].includes(payload.iss)) {
+      throw new DiagnosticAuthError(401, 'authorization_failed', {
+        internalReasonCode: 'TOKEN_VERIFICATION_FAILED'
+      });
+    }
+    if (payload.aud !== clientId) {
+      throw new DiagnosticAuthError(401, 'authorization_failed', {
+        internalReasonCode: 'TOKEN_AUDIENCE_REJECTED'
+      });
+    }
+    if (typeof payload.exp !== 'number' || !Number.isFinite(payload.exp)) {
+      throw new DiagnosticAuthError(401, 'authorization_failed', {
+        internalReasonCode: 'TOKEN_VERIFICATION_FAILED'
+      });
+    }
+    if (payload.exp * 1000 <= Date.now()) {
+      throw new DiagnosticAuthError(401, 'authorization_failed', {
+        internalReasonCode: 'TOKEN_EXPIRED'
+      });
+    }
+    if (typeof payload.nonce !== 'string') {
+      throw new DiagnosticAuthError(401, 'authorization_failed', {
+        internalReasonCode: 'NONCE_REJECTED'
+      });
+    }
+    if (payload.email_verified !== true) {
+      throw new DiagnosticAuthError(401, 'authorization_failed', {
+        internalReasonCode: 'EMAIL_NOT_VERIFIED'
+      });
+    }
+    if (payload.email !== operatorEmail) {
+      throw new DiagnosticAuthError(401, 'authorization_failed', {
+        internalReasonCode: 'OPERATOR_NOT_AUTHORIZED'
+      });
     }
 
     const nonceHash = crypto.createHash('sha256').update(payload.nonce).digest('hex');
-    const consumed = Number(await redis.eval(
-      CONSUME_NONCE_SCRIPT,
-      [`diagnostic:nonce:${challengeId}`],
-      [nonceHash]
-    ));
-    if (consumed !== 1) throw new DiagnosticAuthError(401, 'authorization_failed');
+    const consumedValue = await runRedisOperation(
+      () => redis.eval(
+        CONSUME_NONCE_SCRIPT,
+        [`diagnostic:nonce:${challengeId}`],
+        [nonceHash]
+      )
+    );
+    const consumed = consumedValue === 0 || consumedValue === '0'
+      ? 0
+      : consumedValue === 1 || consumedValue === '1'
+        ? 1
+        : null;
+    if (consumed === null) {
+      throw redisValidationError();
+    }
+    if (consumed !== 1) {
+      throw new DiagnosticAuthError(401, 'authorization_failed', {
+        internalReasonCode: 'NONCE_REJECTED'
+      });
+    }
 
     const operatorKey = crypto.createHash('sha256').update(operatorEmail).digest('hex');
     const operatorWindow = Math.floor(Date.now() / (OPERATOR_RATE_WINDOW_SECONDS * 1000));
@@ -321,7 +423,9 @@ function createDiagnosticAuthHandler(options = {}) {
     } catch (error) {
       const authError = error instanceof DiagnosticAuthError
         ? error
-        : new DiagnosticAuthError(503, 'authorization_unavailable');
+        : new DiagnosticAuthError(503, 'authorization_unavailable', {
+          internalReasonCode: 'UNCLASSIFIED_AUTH_FAILURE'
+        });
       authError.authenticationSucceeded = true;
       authError.nonceConsumed = true;
       throw authError;
@@ -333,9 +437,17 @@ function createDiagnosticAuthHandler(options = {}) {
     const clearCookie = nonceCookie('', 0);
     try {
       requireOrigin(request);
-      const challengeId = parseCookie(request, CHALLENGE_COOKIE);
-      if (!/^[A-Za-z0-9_-]{43}$/.test(challengeId)) {
-        throw new DiagnosticAuthError(401, 'authorization_failed');
+      const challengeCookie = parseCookie(request, CHALLENGE_COOKIE);
+      if (!challengeCookie.found) {
+        throw new DiagnosticAuthError(401, 'authorization_failed', {
+          internalReasonCode: 'CHALLENGE_COOKIE_MISSING'
+        });
+      }
+      const challengeId = challengeCookie.value;
+      if (typeof challengeId !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(challengeId)) {
+        throw new DiagnosticAuthError(401, 'authorization_failed', {
+          internalReasonCode: 'CHALLENGE_INVALID'
+        });
       }
       const contentType = request.headers.get('content-type') || '';
       if (!contentType.toLowerCase().startsWith('application/json')) {
@@ -380,7 +492,10 @@ function createDiagnosticAuthHandler(options = {}) {
     } catch (error) {
       const authError = error instanceof DiagnosticAuthError
         ? error
-        : new DiagnosticAuthError(503, 'authorization_unavailable');
+        : new DiagnosticAuthError(503, 'authorization_unavailable', {
+          internalReasonCode: 'UNCLASSIFIED_AUTH_FAILURE'
+        });
+      logAuthFailure(authError, authFailureLogger);
       return jsonResponse(authError.status, {
         authenticationSucceeded: authError.authenticationSucceeded,
         nonceConsumed: authError.nonceConsumed,

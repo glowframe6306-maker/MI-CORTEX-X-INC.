@@ -94,8 +94,6 @@ function createFixture({
   let databaseCalls = 0;
   let probeCalls = 0;
   const logs = [];
-  const previousConsoleError = console.error;
-  console.error = (...args) => logs.push(args.join(' '));
 
   const googleClient = {
     async verifyIdToken({ idToken, audience }) {
@@ -123,6 +121,7 @@ function createFixture({
     diagnosticEnv: configuration,
     diagnosticExpectedOrigin: origin,
     googleClient,
+    diagnosticAuthFailureLogger: (reasonCode) => logs.push(reasonCode),
     redisFactory: () => redis,
     runDatabaseDiagnostic: async () => {
       probeCalls += 1;
@@ -138,7 +137,7 @@ function createFixture({
     get databaseCalls() { return databaseCalls; },
     get probeCalls() { return probeCalls; },
     get verificationCount() { return verificationCount; },
-    restore() { console.error = previousConsoleError; },
+    restore() { logs.length = 0; },
     setPayload(value) { tokenPayload = { ...tokenPayload, ...value }; },
     setVerificationError(error) { verificationError = error; }
   };
@@ -250,16 +249,109 @@ test('wrong Origin, wrong method, missing credential, and malformed credential a
   }
 });
 
+test('authorization failures log fixed internal codes without exposing them publicly', async () => {
+  const cases = [
+    {
+      reason: 'ORIGIN_REJECTED',
+      status: 403,
+      request: (fixture) => postJson(fixture, DIAGNOSTIC_PATH, { credential: testCredential }, {
+        requestOrigin: 'https://attacker.example'
+      })
+    },
+    {
+      reason: 'CHALLENGE_COOKIE_MISSING',
+      status: 401,
+      request: (fixture) => submitCredential(fixture, '')
+    },
+    {
+      reason: 'CHALLENGE_INVALID',
+      status: 401,
+      request: (fixture) => submitCredential(fixture, 'diagnostic_challenge=invalid')
+    },
+    {
+      reason: 'CHALLENGE_INVALID',
+      status: 401,
+      request: (fixture) => submitCredential(fixture, 'diagnostic_challenge=%E0%A4%A')
+    },
+    {
+      reason: 'UNCLASSIFIED_AUTH_FAILURE',
+      status: 400,
+      challenge: true,
+      request: (fixture, challenge) => fixture.handler(new Request(`${origin}${DIAGNOSTIC_PATH}`, {
+        method: 'POST',
+        headers: {
+          origin,
+          'content-type': 'application/json',
+          cookie: challenge.cookie
+        },
+        body: '{'
+      }))
+    },
+    {
+      reason: 'REDIS_VALIDATION_FAILED',
+      status: 503,
+      publicCategory: 'authorization_unavailable',
+      request: (fixture) => {
+        fixture.redis.fail = true;
+        return postJson(fixture, CHALLENGE_PATH, {});
+      }
+    },
+    {
+      reason: 'REDIS_VALIDATION_FAILED',
+      status: 503,
+      publicCategory: 'authorization_unavailable',
+      challenge: true,
+      prepare: (fixture, challenge) => {
+        fixture.setPayload({ nonce: challenge.body.nonce });
+        fixture.redis.failKeyPrefix = 'diagnostic:nonce:';
+      },
+      request: (fixture, challenge) => submitCredential(fixture, challenge.cookie)
+    }
+  ];
+
+  for (const item of cases) {
+    const fixture = createFixture();
+    try {
+      const challenge = item.challenge ? await issueChallenge(fixture) : null;
+      if (item.prepare) item.prepare(fixture, challenge);
+      const response = await item.request(fixture, challenge);
+      const body = await response.json();
+      const publicBody = JSON.stringify(body);
+
+      assert.equal(response.status, item.status, item.reason);
+      assert.equal(body.errorCategory, item.publicCategory || 'authorization_failed', item.reason);
+      assert.equal(body.authenticationSucceeded, false, item.reason);
+      assert.equal(body.nonceConsumed, false, item.reason);
+      assert.equal('internalReasonCode' in body, false, item.reason);
+      assert.equal(publicBody.includes(item.reason), false, item.reason);
+      assert.deepEqual(fixture.logs, [item.reason], item.reason);
+
+      const log = fixture.logs.join(' ');
+      for (const sensitive of [
+        testCredential,
+        privateCredentialError,
+        operatorEmail,
+        'mock-configured',
+        ...(challenge ? [challenge.body.nonce, challenge.cookie] : [])
+      ]) {
+        assert.equal(log.includes(sensitive), false, item.reason);
+      }
+    } finally {
+      fixture.restore();
+    }
+  }
+});
+
 test('Google signature, issuer, audience, expiry, nonce, email verification, and operator allowlist are enforced', async () => {
   const cases = [
-    { name: 'invalid signature', verifierError: new Error(privateCredentialError) },
-    { name: 'wrong issuer', payload: { iss: 'https://attacker.example' } },
-    { name: 'wrong audience', payload: { aud: 'another-client.apps.googleusercontent.com' } },
-    { name: 'expired token', payload: { exp: Math.floor(Date.now() / 1000) - 1 } },
-    { name: 'missing nonce', payload: { nonce: undefined } },
-    { name: 'wrong nonce', payload: { nonce: 'another-challenge-nonce' } },
-    { name: 'unverified email', payload: { email_verified: false } },
-    { name: 'wrong operator email', payload: { email: 'other@example.test' } }
+    { name: 'invalid signature', internalReasonCode: 'TOKEN_VERIFICATION_FAILED', verifierError: new Error(privateCredentialError) },
+    { name: 'wrong issuer', internalReasonCode: 'TOKEN_VERIFICATION_FAILED', payload: { iss: 'https://attacker.example' } },
+    { name: 'wrong audience', internalReasonCode: 'TOKEN_AUDIENCE_REJECTED', payload: { aud: 'another-client.apps.googleusercontent.com' } },
+    { name: 'expired token', internalReasonCode: 'TOKEN_EXPIRED', payload: { exp: Math.floor(Date.now() / 1000) - 1 } },
+    { name: 'missing nonce', internalReasonCode: 'NONCE_REJECTED', payload: { nonce: undefined } },
+    { name: 'wrong nonce', internalReasonCode: 'NONCE_REJECTED', payload: { nonce: 'another-challenge-nonce' } },
+    { name: 'unverified email', internalReasonCode: 'EMAIL_NOT_VERIFIED', payload: { email_verified: false } },
+    { name: 'wrong operator email', internalReasonCode: 'OPERATOR_NOT_AUTHORIZED', payload: { email: 'other@example.test' } }
   ];
 
   for (const item of cases) {
@@ -276,7 +368,8 @@ test('Google signature, issuer, audience, expiry, nonce, email verification, and
       assert.equal(fixture.databaseCalls, 0, item.name);
       assert.equal(JSON.stringify(body).includes(privateCredentialError), false, item.name);
       assert.equal(JSON.stringify(body).includes(testCredential), false, item.name);
-      assert.equal(fixture.logs.length, 0, item.name);
+      assert.deepEqual(fixture.logs, [item.internalReasonCode], item.name);
+      assert.equal(JSON.stringify(body).includes(item.internalReasonCode), false, item.name);
     } finally {
       fixture.restore();
     }
@@ -357,7 +450,7 @@ test('Redis unavailable or timed out fails closed without Neon access', async ()
     assert.equal(JSON.stringify(body).includes('private Redis credential failure'), false);
     assert.equal(fixture.databaseCalls, 0);
     assert.equal(fixture.probeCalls, 0);
-    assert.equal(fixture.logs.length, 0);
+    assert.deepEqual(fixture.logs, ['REDIS_VALIDATION_FAILED']);
   } finally {
     fixture.restore();
   }
@@ -375,7 +468,7 @@ test('Redis unavailable or timed out fails closed without Neon access', async ()
     assert.equal(body.errorCategory, 'authorization_unavailable');
     assert.equal(verificationFixture.probeCalls, 0);
     assert.equal(verificationFixture.databaseCalls, 0);
-    assert.equal(verificationFixture.logs.length, 0);
+    assert.deepEqual(verificationFixture.logs, ['REDIS_VALIDATION_FAILED']);
   } finally {
     verificationFixture.restore();
   }
