@@ -21,7 +21,12 @@ const {
   validateApplication,
   verifySameOrigin
 } = require('./domain');
-const { getDatabase } = require('./database');
+const {
+  getDatabase,
+  getDatabaseUrlState,
+  getDatabaseErrorCategory
+} = require('./database');
+const { createDiagnosticAuthHandler } = require('./diagnostic-auth');
 
 const MAX_JSON_BYTES = 16 * 1024;
 const MAX_CLEANUP_BATCHES_PER_RUN = 5;
@@ -109,6 +114,13 @@ function createServerlessHandler(options = {}) {
   const database = options.database || getDatabase;
   const blobs = options.blobs || require('@vercel/blob');
   const pages = options.pages || {};
+  const handleDiagnosticRequest = options.handleDiagnosticRequest || createDiagnosticAuthHandler({
+    env: options.diagnosticEnv || process.env,
+    expectedOrigin: options.diagnosticExpectedOrigin,
+    googleClient: options.googleClient,
+    redisFactory: options.redisFactory,
+    runDatabaseDiagnostic: options.runDatabaseDiagnostic
+  });
   const dummyPasswordHash = options.dummyPasswordHash
     ? Promise.resolve(options.dummyPasswordHash)
     : bcrypt.hash(crypto.randomBytes(32).toString('hex'), 12);
@@ -452,6 +464,13 @@ function createServerlessHandler(options = {}) {
   }
 
   async function handle(request) {
+    const diagnosticResponse = await handleDiagnosticRequest(request);
+    if (diagnosticResponse) return diagnosticResponse;
+
+    let db = null;
+    let databaseInitializationSucceeded = false;
+    let readOnlyQuerySucceeded = false;
+
     try {
       const url = new URL(request.url);
       const pathname = url.searchParams.get('route') || url.pathname;
@@ -459,7 +478,8 @@ function createServerlessHandler(options = {}) {
       const routeUrl = new URL(pathname + url.search, url.origin);
       const path = routeUrl.pathname;
       const config = getConfig();
-      const db = await getDb();
+      db = await getDb();
+      databaseInitializationSucceeded = true;
 
       if (path === '/admin' && request.method === 'GET') {
         const session = await getSession(db, request, 'site_admin', SITE_ADMIN_COOKIE, config);
@@ -598,7 +618,14 @@ function createServerlessHandler(options = {}) {
       throw new HttpError(404, 'Not found.');
     } catch (error) {
       if (error instanceof HttpError) return jsonResponse(error.status, { error: error.message }, error.headers);
-      console.error(`Serverless Careers request failed (${error.name || 'Error'}).`);
+      console.error(JSON.stringify({
+        component: 'careers-serverless',
+        errorClass: error && error.name ? error.name : 'UnknownError',
+        errorCategory: getDatabaseErrorCategory(error),
+        databaseUrlState: getDatabaseUrlState(),
+        databaseInitializationSucceeded,
+        readOnlyQuerySucceeded
+      }));
       return jsonResponse(500, { error: 'The Careers service encountered an error.' });
     }
   }

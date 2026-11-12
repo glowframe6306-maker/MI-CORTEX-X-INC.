@@ -8,6 +8,7 @@ const bcrypt = require('bcryptjs');
 const { PGlite } = require('@electric-sql/pglite');
 const test = require('node:test');
 const { createServerlessHandler } = require('./handler');
+const { getDatabase, getDatabaseUrlState, diagnoseDatabaseReadOnlyQuery } = require('./database');
 const { provisionCareersAdmin, provisionSiteAdmin } = require('../scripts/provision-serverless-admin');
 
 const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
@@ -41,6 +42,151 @@ test.after(() => {
   for (const [name, value] of Object.entries(previousEnvironment)) {
     if (value === undefined) delete process.env[name];
     else process.env[name] = value;
+  }
+});
+
+test('database diagnostic distinguishes URL, pool, connection, and query failures without leaking details', async () => {
+  const originalDatabaseUrl = process.env.DATABASE_URL;
+  const neverCreatePool = () => { throw new Error('Pool must not be constructed.'); };
+
+  try {
+    delete process.env.DATABASE_URL;
+    assert.equal(getDatabaseUrlState(), 'undefined');
+    assert.throws(() => getDatabase(), /DATABASE_URL is required\./);
+    let diagnostic = await diagnoseDatabaseReadOnlyQuery({ poolFactory: neverCreatePool });
+    assert.equal(diagnostic.databaseUrlState, 'undefined');
+    assert.equal(diagnostic.poolInitializationSucceeded, false);
+    assert.equal(diagnostic.connectionSucceeded, false);
+    assert.equal(diagnostic.readOnlyQuerySucceeded, false);
+
+    process.env.DATABASE_URL = '';
+    assert.equal(getDatabaseUrlState(), 'empty');
+    assert.throws(() => getDatabase(), /DATABASE_URL is required\./);
+    diagnostic = await diagnoseDatabaseReadOnlyQuery({ poolFactory: neverCreatePool });
+    assert.equal(diagnostic.databaseUrlState, 'empty');
+    assert.equal(diagnostic.poolInitializationSucceeded, false);
+    assert.equal(diagnostic.connectionSucceeded, false);
+    assert.equal(diagnostic.readOnlyQuerySucceeded, false);
+
+    process.env.DATABASE_URL = 'postgresql://diagnostic-user:diagnostic-secret@db.invalid/diagnostic-db';
+    assert.equal(getDatabaseUrlState(), 'present');
+
+    let poolClosed = false;
+    let clientReleased = false;
+    let executedQuery;
+    diagnostic = await diagnoseDatabaseReadOnlyQuery({
+      poolFactory: () => ({
+        async connect() {
+          return {
+            async query(query) {
+              executedQuery = query;
+              return { rows: [{ current_database: 'private-db', current_user: 'private-user' }] };
+            },
+            release() { clientReleased = true; }
+          };
+        },
+        async end() { poolClosed = true; }
+      })
+    });
+    assert.equal(diagnostic.databaseUrlState, 'present');
+    assert.equal(diagnostic.poolInitializationSucceeded, true);
+    assert.equal(diagnostic.connectionSucceeded, true);
+    assert.equal(diagnostic.readOnlyQuerySucceeded, true);
+    assert.equal(executedQuery, 'SELECT current_database(), current_user');
+    assert.equal(clientReleased, true);
+    assert.equal(poolClosed, true);
+    assert.deepEqual(Object.keys(diagnostic).sort(), [
+      'connectionSucceeded', 'databaseUrlState', 'poolInitializationSucceeded', 'readOnlyQuerySucceeded'
+    ]);
+    assert.doesNotMatch(JSON.stringify(diagnostic), /private-db|private-user|diagnostic-secret|db\.invalid/i);
+
+    diagnostic = await diagnoseDatabaseReadOnlyQuery({
+      poolFactory: () => { throw new TypeError('secret connection information'); }
+    });
+    assert.deepEqual(diagnostic, {
+      databaseUrlState: 'present',
+      poolInitializationSucceeded: false,
+      connectionSucceeded: false,
+      readOnlyQuerySucceeded: false,
+      errorClass: 'TypeError',
+      errorCategory: 'type_error'
+    });
+
+    let failedConnectPoolClosed = false;
+    diagnostic = await diagnoseDatabaseReadOnlyQuery({
+      poolFactory: () => ({
+        async connect() { throw new Error('secret connection failure'); },
+        async end() { failedConnectPoolClosed = true; }
+      })
+    });
+    assert.equal(diagnostic.poolInitializationSucceeded, true);
+    assert.equal(diagnostic.connectionSucceeded, false);
+    assert.equal(diagnostic.readOnlyQuerySucceeded, false);
+    assert.equal(failedConnectPoolClosed, true);
+    assert.doesNotMatch(JSON.stringify(diagnostic), /secret connection failure/i);
+
+    let failedQueryClientReleased = false;
+    let failedQueryPoolClosed = false;
+    diagnostic = await diagnoseDatabaseReadOnlyQuery({
+      poolFactory: () => ({
+        async connect() {
+          return {
+            async query() { throw new Error('secret query failure'); },
+            release(error) {
+              failedQueryClientReleased = true;
+              assert.match(error.message, /secret query failure/);
+            }
+          };
+        },
+        async end() { failedQueryPoolClosed = true; }
+      })
+    });
+    assert.equal(diagnostic.poolInitializationSucceeded, true);
+    assert.equal(diagnostic.connectionSucceeded, true);
+    assert.equal(diagnostic.readOnlyQuerySucceeded, false);
+    assert.equal(failedQueryClientReleased, true);
+    assert.equal(failedQueryPoolClosed, true);
+    assert.doesNotMatch(JSON.stringify(diagnostic), /secret query failure/i);
+  } finally {
+    if (originalDatabaseUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = originalDatabaseUrl;
+  }
+});
+
+test('handler logs safe diagnostics for non-HttpError exceptions and keeps HTTP response format unchanged', async () => {
+  const originalConsoleError = console.error;
+  const logs = [];
+  console.error = (...args) => logs.push(args.join(' '));
+
+  try {
+    const handler = createServerlessHandler({
+      database: () => { throw new Error('simulated init failure'); },
+      blobs: { handleUpload() { throw new Error('unused'); } },
+      pages: { login: '<h1>login</h1>', dashboard: '<h1>dashboard</h1>' }
+    });
+    const response = await handler(new Request('https://mi-cortex-test.example/api/careers/status'));
+    assert.equal(response.status, 500);
+    assert.deepEqual(await response.json(), { error: 'The Careers service encountered an error.' });
+    assert.equal(logs.length, 1);
+    assert.match(logs[0], /"component":"careers-serverless"/);
+    assert.doesNotMatch(logs[0], /raw database error|postgres|password|token|connection/i);
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
+test('database initialization failure reports false init flag without a query', async () => {
+  const originalDatabaseUrl = process.env.DATABASE_URL;
+  try {
+    delete process.env.DATABASE_URL;
+    const diagnostic = await diagnoseDatabaseReadOnlyQuery();
+    assert.equal(diagnostic.databaseUrlState, 'undefined');
+    assert.equal(diagnostic.poolInitializationSucceeded, false);
+    assert.equal(diagnostic.connectionSucceeded, false);
+    assert.equal(diagnostic.readOnlyQuerySucceeded, false);
+  } finally {
+    if (originalDatabaseUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = originalDatabaseUrl;
   }
 });
 
