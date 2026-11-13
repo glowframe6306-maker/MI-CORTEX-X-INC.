@@ -6,7 +6,7 @@ const path = require('node:path');
 const test = require('node:test');
 const { JSDOM, VirtualConsole } = require('jsdom');
 
-const root = __dirname;
+const root = path.resolve(__dirname, '..');
 const scriptSource = fs.readFileSync(path.join(root, 'script.js'), 'utf8');
 const stylesSource = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
@@ -20,7 +20,8 @@ async function createPage() {
   virtualConsole.on('jsdomError', (error) => errors.push(error.message));
   const dom = new JSDOM(`<!doctype html>
     <html><head><style>${stylesSource}</style></head>
-    <body><main><div class="hero-visual">
+    <body><header class="topbar"><nav class="nav-links"></nav></header>
+    <main><div class="hero-visual">
       <img src="assets/REAL.jpeg" alt="Founder and CEO Mohomed Imran Muhammadh">
     </div><p>Home Page content</p></main><script>${scriptSource}</script></body></html>`, {
     pretendToBeVisual: true,
@@ -52,15 +53,16 @@ function pointerEvent(window, type, pointerId, clientX, clientY) {
 }
 
 async function openViewer(page) {
-  page.document.querySelector('.hero-visual img').click();
+  page.document.querySelector('body > main .hero-visual img').click();
   await new Promise((resolve) => page.window.requestAnimationFrame(resolve));
+  await new Promise((resolve) => page.window.setTimeout(resolve, 60));
   return getViewer(page);
 }
 
 test('opens the original CEO photo with accessible loading, error, and close behavior', async (t) => {
   const page = await createPage();
   t.after(() => page.dom.window.close());
-  const photo = page.document.querySelector('.hero-visual img');
+  const photo = page.document.querySelector('body > main .hero-visual img');
   const viewer = await openViewer(page);
   const image = viewer.querySelector('.image-viewer__image');
 
@@ -82,6 +84,8 @@ test('opens the original CEO photo with accessible loading, error, and close beh
   assert.equal(original.href, photo.src);
   assert.equal(original.target, '_blank');
   assert.equal(original.rel, 'noopener noreferrer');
+  await new Promise((resolve) => page.window.setTimeout(resolve, 180));
+  assert.equal(page.document.querySelectorAll('.topbar-lens .image-viewer').length, 0);
 
   image.dispatchEvent(new page.window.Event('error'));
   assert.equal(image.hidden, true);
@@ -218,6 +222,6 @@ test('supports fullscreen controls, focus trapping, and closing from the backdro
 
   stage.click();
   assert.equal(viewer.getAttribute('aria-hidden'), 'true');
-  assert.equal(page.document.activeElement, page.document.querySelector('.hero-visual img'));
+  assert.equal(page.document.activeElement, page.document.querySelector('body > main .hero-visual img'));
   assert.equal(page.errors.length, 0);
 });

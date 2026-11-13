@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const position = getComputedStyle(sourceChild).position;
         if (
           sourceChild.classList.contains('topbar-lens')
-          || sourceChild.matches('[data-logo-viewer], [data-careers-reservation], [data-careers-reserve]')
+          || sourceChild.matches('[data-logo-viewer], [data-careers-reservation], [data-careers-reserve], .image-viewer')
           || ['IFRAME', 'VIDEO', 'AUDIO', 'OBJECT', 'EMBED'].includes(tagName)
           || position === 'fixed'
           || position === 'sticky'
@@ -227,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (
           child === lens
           || child.classList.contains('device-notch')
-          || child.matches('[data-logo-viewer], [data-careers-reservation], [data-careers-reserve]')
+          || child.matches('[data-logo-viewer], [data-careers-reservation], [data-careers-reserve], .image-viewer')
           || child.tagName === 'SCRIPT'
         ) return;
 
@@ -276,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('scroll', scheduleLensGeometryUpdate, { passive: true });
     window.addEventListener('resize', scheduleLensRefresh, { passive: true });
     const handleLensContentChange = (event) => {
-      if (event.target instanceof Element && event.target.closest('[data-logo-viewer], [data-careers-reservation], [data-careers-reserve], .sub-company-card__logo')) return;
+      if (event.target instanceof Element && event.target.closest('[data-logo-viewer], [data-careers-reservation], [data-careers-reserve], .sub-company-card__logo, .image-viewer')) return;
       scheduleLensRefresh();
     };
     body.addEventListener('click', handleLensContentChange, true);
@@ -285,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshLensScene();
   }
 
-  const homePhoto = document.querySelector('.hero-visual img');
+  const homePhoto = document.querySelector('body > main .hero-visual img');
   if (homePhoto) {
     const viewer = document.createElement('div');
     viewer.className = 'image-viewer';
@@ -356,6 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let imageLoaded = false;
     let openState = false;
     let closeTimer = 0;
+    let focusTimer = 0;
     let openingFrame = 0;
     const activePointers = new Map();
     const minScale = 1;
@@ -400,6 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
       viewer.setAttribute('aria-hidden', 'true');
       viewer.setAttribute('aria-busy', 'false');
       window.clearTimeout(closeTimer);
+      window.clearTimeout(focusTimer);
       closeTimer = window.setTimeout(() => {
         if (!openState) viewer.hidden = true;
       }, transitionDuration);
@@ -416,6 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (openState) return;
       openState = true;
       window.clearTimeout(closeTimer);
+      window.clearTimeout(focusTimer);
       window.cancelAnimationFrame(openingFrame);
       const imageSource = homePhoto.currentSrc || homePhoto.src;
       downloadLink.href = imageSource;
@@ -442,7 +445,10 @@ document.addEventListener('DOMContentLoaded', () => {
       openingFrame = window.requestAnimationFrame(() => {
         if (!openState) return;
         viewer.classList.add('is-open');
-        closeButton.focus();
+        // Move focus after the triggering pointer click finishes its default focus action.
+        focusTimer = window.setTimeout(() => {
+          if (openState) closeButton.focus();
+        }, 50);
       });
     };
 
