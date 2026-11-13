@@ -518,10 +518,10 @@ body > header.topbar > .navbar .nav-links a {
   border: 1px solid var(--line);
   border-radius: 999px;
   overflow: hidden;
-  background: transparent;
+  background: rgba(7, 11, 22, 0.45);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   isolation: isolate;
   transition: box-shadow 280ms ease;
 }
@@ -554,7 +554,7 @@ body > header.topbar > .navbar .nav-links a {
   z-index: 0;
   overflow: hidden;
   border-radius: inherit;
-  background: var(--bg);
+  background: rgba(7, 11, 22, 0.35);
   pointer-events: none;
   filter: blur(8px) saturate(1.1);
 }
