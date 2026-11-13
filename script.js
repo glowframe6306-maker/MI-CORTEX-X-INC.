@@ -292,7 +292,8 @@ document.addEventListener('DOMContentLoaded', () => {
     viewer.hidden = true;
     viewer.setAttribute('role', 'dialog');
     viewer.setAttribute('aria-modal', 'true');
-    viewer.setAttribute('aria-label', 'Image viewer');
+    viewer.setAttribute('aria-label', 'CEO profile photograph viewer');
+    viewer.setAttribute('aria-hidden', 'true');
 
     const toolbar = document.createElement('div');
     toolbar.className = 'image-viewer__toolbar';
@@ -307,11 +308,25 @@ document.addEventListener('DOMContentLoaded', () => {
       toolbar.appendChild(button);
       return button;
     };
+    const makeLink = (label, text, className) => {
+      const link = document.createElement('a');
+      link.className = `image-viewer__control ${className}`;
+      link.setAttribute('aria-label', label);
+      link.title = label;
+      link.textContent = text;
+      toolbar.appendChild(link);
+      return link;
+    };
 
     const zoomOutButton = makeControl('Zoom out', '−', 'image-viewer__zoom-out');
     const zoomInButton = makeControl('Zoom in', '+', 'image-viewer__zoom-in');
     const resetButton = makeControl('Reset zoom', 'Reset', 'image-viewer__reset');
     const fullscreenButton = makeControl('Full screen', 'Full Screen', 'image-viewer__fullscreen');
+    const downloadLink = makeLink('Download original image', 'Download', 'image-viewer__download');
+    downloadLink.download = 'REAL.jpeg';
+    const originalLink = makeLink('Open original image in a new tab', 'Open Original', 'image-viewer__original');
+    originalLink.target = '_blank';
+    originalLink.rel = 'noopener noreferrer';
     const closeButton = makeControl('Close image viewer', '×', 'image-viewer__close');
     const status = document.createElement('span');
     status.className = 'image-viewer__status';
@@ -321,10 +336,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const stage = document.createElement('div');
     stage.className = 'image-viewer__stage';
     stage.tabIndex = 0;
+    stage.setAttribute('aria-label', 'Image viewing area');
     const viewerImage = document.createElement('img');
     viewerImage.className = 'image-viewer__image';
     viewerImage.alt = homePhoto.alt;
     viewerImage.draggable = false;
+    viewerImage.hidden = true;
     stage.appendChild(viewerImage);
     viewer.append(toolbar, stage);
     body.appendChild(viewer);
@@ -333,12 +350,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let translateX = 0;
     let translateY = 0;
     let previousOverflow = '';
-    let previousScrollY = 0;
+    let previousRootOverflow = '';
     let dragStart = null;
     let pinchStart = null;
+    let imageLoaded = false;
+    let openState = false;
+    let closeTimer = 0;
+    let openingFrame = 0;
     const activePointers = new Map();
     const minScale = 1;
     const maxScale = 5;
+    const transitionDuration = 240;
 
     const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
     const limitPan = () => {
@@ -372,9 +394,17 @@ document.addEventListener('DOMContentLoaded', () => {
       renderImage();
     };
     const closeViewer = () => {
-      viewer.hidden = true;
+      if (!openState) return;
+      openState = false;
+      viewer.classList.remove('is-open');
+      viewer.setAttribute('aria-hidden', 'true');
+      viewer.setAttribute('aria-busy', 'false');
+      window.clearTimeout(closeTimer);
+      closeTimer = window.setTimeout(() => {
+        if (!openState) viewer.hidden = true;
+      }, transitionDuration);
       body.style.overflow = previousOverflow;
-      window.scrollTo(0, previousScrollY);
+      document.documentElement.style.overflow = previousRootOverflow;
       if (document.fullscreenElement === viewer && document.exitFullscreen) {
         document.exitFullscreen().catch(() => {
           status.textContent = 'Could not exit full screen.';
@@ -383,16 +413,51 @@ document.addEventListener('DOMContentLoaded', () => {
       homePhoto.focus();
     };
     const openViewer = () => {
-      viewerImage.src = homePhoto.currentSrc || homePhoto.src;
+      if (openState) return;
+      openState = true;
+      window.clearTimeout(closeTimer);
+      window.cancelAnimationFrame(openingFrame);
+      const imageSource = homePhoto.currentSrc || homePhoto.src;
+      downloadLink.href = imageSource;
+      originalLink.href = imageSource;
       viewerImage.alt = homePhoto.alt;
-      status.textContent = '';
+      viewer.setAttribute('aria-busy', String(!imageLoaded || viewerImage.src !== imageSource));
+      if (imageLoaded && viewerImage.src === imageSource) {
+        viewerImage.hidden = false;
+        status.textContent = '';
+      } else {
+        imageLoaded = false;
+        viewerImage.hidden = true;
+        status.textContent = 'Loading original image…';
+        viewerImage.removeAttribute('src');
+        viewerImage.src = imageSource;
+      }
       resetImage();
       previousOverflow = body.style.overflow;
-      previousScrollY = window.scrollY;
+      previousRootOverflow = document.documentElement.style.overflow;
       body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
       viewer.hidden = false;
-      closeButton.focus();
+      viewer.setAttribute('aria-hidden', 'false');
+      openingFrame = window.requestAnimationFrame(() => {
+        if (!openState) return;
+        viewer.classList.add('is-open');
+        closeButton.focus();
+      });
     };
+
+    viewerImage.addEventListener('load', () => {
+      imageLoaded = true;
+      viewerImage.hidden = false;
+      viewer.setAttribute('aria-busy', 'false');
+      status.textContent = '';
+    });
+    viewerImage.addEventListener('error', () => {
+      imageLoaded = false;
+      viewerImage.hidden = true;
+      viewer.setAttribute('aria-busy', 'false');
+      status.textContent = 'The original image could not be loaded. Close the viewer and try again.';
+    });
 
     homePhoto.tabIndex = 0;
     homePhoto.setAttribute('role', 'button');
@@ -410,17 +475,31 @@ document.addEventListener('DOMContentLoaded', () => {
     zoomInButton.addEventListener('click', () => setScale(scale * 1.25));
     zoomOutButton.addEventListener('click', () => setScale(scale / 1.25));
     viewer.addEventListener('click', (event) => {
-      if (event.target === viewer) closeViewer();
+      if (event.target === viewer || event.target === stage) closeViewer();
     });
     document.addEventListener('keydown', (event) => {
-      if (viewer.hidden) return;
+      if (!openState) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         closeViewer();
+      } else if (event.key === 'Tab') {
+        const focusable = Array.from(viewer.querySelectorAll('button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'));
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (!first || !last) return;
+        if (event.shiftKey && (document.activeElement === first || !viewer.contains(document.activeElement))) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && (document.activeElement === last || !viewer.contains(document.activeElement))) {
+          event.preventDefault();
+          first.focus();
+        }
       } else if (event.key === '+' || event.key === '=') {
         setScale(scale * 1.25);
       } else if (event.key === '-') {
         setScale(scale / 1.25);
+      } else if (event.key === '0') {
+        resetImage();
       }
     });
 
@@ -431,14 +510,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     stage.addEventListener('pointerdown', (event) => {
       activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-      stage.setPointerCapture(event.pointerId);
+      if (stage.setPointerCapture) stage.setPointerCapture(event.pointerId);
       if (activePointers.size === 1 && scale > 1) {
         dragStart = { x: event.clientX, y: event.clientY, translateX, translateY };
       } else if (activePointers.size === 2) {
         const [first, second] = [...activePointers.values()];
         pinchStart = {
           distance: Math.hypot(second.x - first.x, second.y - first.y),
-          scale
+          scale,
+          translateX,
+          translateY,
+          midpointX: (first.x + second.x) / 2,
+          midpointY: (first.y + second.y) / 2
         };
         dragStart = null;
       }
@@ -449,7 +532,22 @@ document.addEventListener('DOMContentLoaded', () => {
       if (activePointers.size > 1 && pinchStart) {
         const [first, second] = [...activePointers.values()];
         const distance = Math.hypot(second.x - first.x, second.y - first.y);
-        setScale(pinchStart.scale * distance / pinchStart.distance);
+        if (pinchStart.distance > 0) {
+          const midpointX = (first.x + second.x) / 2;
+          const midpointY = (first.y + second.y) / 2;
+          const nextScale = clamp(pinchStart.scale * distance / pinchStart.distance, minScale, maxScale);
+          const bounds = stage.getBoundingClientRect();
+          const centerX = bounds.left + bounds.width / 2;
+          const centerY = bounds.top + bounds.height / 2;
+          const initialPointX = pinchStart.midpointX - centerX;
+          const initialPointY = pinchStart.midpointY - centerY;
+          const currentPointX = midpointX - centerX;
+          const currentPointY = midpointY - centerY;
+          translateX = currentPointX - (initialPointX - pinchStart.translateX) * nextScale / pinchStart.scale;
+          translateY = currentPointY - (initialPointY - pinchStart.translateY) * nextScale / pinchStart.scale;
+          scale = nextScale;
+          renderImage();
+        }
       } else if (dragStart && scale > 1) {
         translateX = dragStart.translateX + event.clientX - dragStart.x;
         translateY = dragStart.translateY + event.clientY - dragStart.y;
@@ -459,7 +557,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const endPointer = (event) => {
       activePointers.delete(event.pointerId);
       if (activePointers.size < 2) pinchStart = null;
-      if (!activePointers.size) dragStart = null;
+      if (activePointers.size === 1 && scale > 1) {
+        const [point] = activePointers.values();
+        dragStart = { x: point.x, y: point.y, translateX, translateY };
+      } else if (!activePointers.size) {
+        dragStart = null;
+      }
     };
     stage.addEventListener('pointerup', endPointer);
     stage.addEventListener('pointercancel', endPointer);
