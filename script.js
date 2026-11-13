@@ -1737,6 +1737,241 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  const orderModal = (() => {
+    const existing = document.getElementById('mi-cortex-order-modal');
+    if (existing) return existing;
+    const modal = document.createElement('div');
+    modal.id = 'mi-cortex-order-modal';
+    modal.className = 'order-modal';
+    modal.setAttribute('aria-hidden', 'true');
+    modal.innerHTML = `
+      <div class="order-modal__backdrop" role="dialog" aria-modal="true" aria-labelledby="order-modal-title">
+        <div class="order-modal__header">
+          <h2 id="order-modal-title">Order request</h2>
+          <button type="button" class="order-modal__close" aria-label="Close order form">×</button>
+        </div>
+        <div class="order-modal__body">
+          <div class="order-modal__step is-visible" data-order-step="confirm">
+            <p class="order-modal__summary"><strong data-order-name>Item</strong><br /><span data-order-meta>Product request</span></p>
+            <p>Review the item and continue to the customer details form to send your order request.</p>
+            <div class="order-modal__actions">
+              <button type="button" class="order-modal__button--ghost" data-order-cancel>Cancel</button>
+              <button type="button" class="order-modal__button" data-order-continue>Continue</button>
+            </div>
+          </div>
+          <div class="order-modal__step" data-order-step="form">
+            <form class="order-form" data-order-form>
+              <div class="order-form__grid">
+                <div class="order-form__field">
+                  <label for="order-customer-name">Customer name</label>
+                  <input id="order-customer-name" name="customerName" type="text" required />
+                </div>
+                <div class="order-form__field">
+                  <label for="order-customer-email">Email</label>
+                  <input id="order-customer-email" name="customerEmail" type="email" required />
+                </div>
+                <div class="order-form__field">
+                  <label for="order-customer-phone">Phone</label>
+                  <input id="order-customer-phone" name="customerPhone" type="tel" required />
+                </div>
+                <div class="order-form__field">
+                  <label for="order-company-name">Company / organisation</label>
+                  <input id="order-company-name" name="companyName" type="text" />
+                </div>
+                <div class="order-form__field">
+                  <label for="order-quantity">Quantity</label>
+                  <input id="order-quantity" name="quantity" type="number" min="1" max="9999" value="1" required />
+                </div>
+                <div class="order-form__field">
+                  <label for="order-urgency">Urgency</label>
+                  <select id="order-urgency" name="urgency">
+                    <option value="standard">Standard</option>
+                    <option value="priority">Priority</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+                <div class="order-form__field">
+                  <label for="order-preferred-timeline">Preferred timeline</label>
+                  <input id="order-preferred-timeline" name="preferredTimeline" type="text" placeholder="e.g. 2 weeks" />
+                </div>
+                <div class="order-form__field">
+                  <label for="order-budget">Budget</label>
+                  <input id="order-budget" name="budget" type="text" placeholder="e.g. Rs. 50,000" />
+                </div>
+              </div>
+              <div class="order-form__field">
+                <label for="order-notes">Order notes</label>
+                <textarea id="order-notes" name="notes" placeholder="Share specific requirements or scope notes."></textarea>
+              </div>
+              <p class="order-modal__notice" aria-live="polite"></p>
+              <div class="order-modal__actions">
+                <button type="button" class="order-modal__button--ghost" data-order-back>Back</button>
+                <button type="submit" class="order-modal__button">Submit order request</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    const closeButton = modal.querySelector('.order-modal__close');
+    const cancelButton = modal.querySelector('[data-order-cancel]');
+    const backButton = modal.querySelector('[data-order-back]');
+    const continueButton = modal.querySelector('[data-order-continue]');
+    const close = () => {
+      modal.classList.remove('is-open');
+      modal.setAttribute('aria-hidden', 'true');
+      modal.querySelector('[data-order-step="confirm"]').classList.add('is-visible');
+      modal.querySelector('[data-order-step="form"]').classList.remove('is-visible');
+      modal.querySelector('[data-order-form]').reset();
+      modal.querySelector('[data-order-name]').textContent = 'Item';
+      modal.querySelector('[data-order-meta]').textContent = 'Product request';
+      modal.querySelector('.order-modal__notice').textContent = '';
+      modal.dataset.itemName = '';
+      modal.dataset.itemType = '';
+      modal.dataset.itemCategory = '';
+    };
+    closeButton.addEventListener('click', close);
+    cancelButton.addEventListener('click', close);
+    backButton.addEventListener('click', () => {
+      modal.querySelector('[data-order-step="confirm"]').classList.add('is-visible');
+      modal.querySelector('[data-order-step="form"]').classList.remove('is-visible');
+      modal.querySelector('.order-modal__notice').textContent = '';
+    });
+    continueButton.addEventListener('click', () => {
+      modal.querySelector('[data-order-step="confirm"]').classList.remove('is-visible');
+      modal.querySelector('[data-order-step="form"]').classList.add('is-visible');
+      const customerName = modal.querySelector('#order-customer-name');
+      if (customerName) customerName.focus();
+    });
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) close();
+    });
+    modal.querySelector('[data-order-form]').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const notice = modal.querySelector('.order-modal__notice');
+      const submitButton = form.querySelector('button[type="submit"]');
+      const payload = {
+        itemType: modal.dataset.itemType || 'product',
+        itemName: modal.dataset.itemName || 'Product request',
+        itemCategory: modal.dataset.itemCategory || '',
+        customerName: form.elements.customerName.value.trim(),
+        customerEmail: form.elements.customerEmail.value.trim(),
+        customerPhone: form.elements.customerPhone.value.trim(),
+        companyName: form.elements.companyName.value.trim(),
+        quantity: Number(form.elements.quantity.value || 1),
+        urgency: form.elements.urgency.value,
+        preferredTimeline: form.elements.preferredTimeline.value.trim(),
+        budget: form.elements.budget.value.trim(),
+        notes: form.elements.notes.value.trim()
+      };
+      notice.textContent = '';
+      notice.classList.remove('order-modal__notice--error');
+      submitButton.disabled = true;
+      try {
+        const response = await fetch('/api/orders', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result.error || 'The order request could not be submitted.');
+        }
+        notice.textContent = `Order request received. Reference: ${result.id || 'pending'}`;
+        notice.classList.remove('order-modal__notice--error');
+        form.reset();
+        setTimeout(close, 1800);
+      } catch (error) {
+        notice.textContent = error.message || 'The order request could not be submitted.';
+        notice.classList.add('order-modal__notice--error');
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
+    return modal;
+  })();
+
+  const attachOrderButtons = () => {
+    const items = Array.from(document.querySelectorAll('.catalog-item'));
+    items.forEach((item) => {
+      if (item.querySelector('.catalog-item__order')) return;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'catalog-item__order';
+      button.textContent = 'Order now';
+      button.addEventListener('click', () => {
+        const itemName = item.dataset.name || item.querySelector('h3')?.textContent?.trim() || 'Selected item';
+        const itemCategory = item.dataset.category || 'products';
+        const itemType = (
+          item.closest('[data-group="services"]') || item.dataset.category === 'services'
+        ) ? 'service' : 'product';
+        const nameLabel = orderModal.querySelector('[data-order-name]');
+        const metaLabel = orderModal.querySelector('[data-order-meta]');
+        nameLabel.textContent = itemName;
+        metaLabel.textContent = `${itemType === 'service' ? 'Service' : 'Product'} request · ${itemCategory === 'services' ? 'Service category' : 'Product category'}`;
+        orderModal.dataset.itemName = itemName;
+        orderModal.dataset.itemType = itemType;
+        orderModal.dataset.itemCategory = itemCategory;
+        orderModal.classList.add('is-open');
+        orderModal.setAttribute('aria-hidden', 'false');
+      });
+      item.appendChild(button);
+    });
+  };
+
+  if (document.querySelector('.services-catalog')) {
+    attachOrderButtons();
+  }
+
+  const ordersTable = document.querySelector('[data-admin-orders-list]');
+  if (ordersTable) {
+    const formatStatus = (value) => value ? value.replace(/_/g, ' ') : 'new';
+    const renderOrders = (orders) => {
+      if (!orders.length) {
+        ordersTable.innerHTML = '<p class="admin-orders-table__empty">No product or service orders have been submitted yet.</p>';
+        return;
+      }
+      ordersTable.innerHTML = `
+        <table class="admin-orders-table">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Customer</th>
+              <th>Item</th>
+              <th>Quantity</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${orders.map((order) => `
+              <tr>
+                <td><strong>${order.id.slice(0, 8)}</strong><br /><small>${new Date(order.createdAt).toLocaleString()}</small></td>
+                <td>${order.customerName}<br /><small>${order.customerEmail}</small></td>
+                <td><strong>${order.itemName}</strong><br /><small>${order.itemType}</small></td>
+                <td>${order.quantity}</td>
+                <td><span class="admin-orders-table__status">${formatStatus(order.status)}</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    };
+    fetch('/api/site-admin/orders', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' }
+    }).then(async (response) => {
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'The order list request failed.');
+      renderOrders(result.orders || []);
+    }).catch(() => {
+      ordersTable.innerHTML = '<p class="admin-orders-table__empty">The order list is temporarily unavailable.</p>';
+    });
+  }
+
   const loadingScreen = document.getElementById('loading-screen');
   if (loadingScreen) {
     window.addEventListener('load', () => {

@@ -86,6 +86,25 @@ function createDatabase() {
       encrypted_content BLOB NOT NULL,
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS orders (
+      id TEXT PRIMARY KEY,
+      item_type TEXT NOT NULL CHECK(item_type IN ('product', 'service')),
+      item_name TEXT NOT NULL,
+      item_category TEXT,
+      customer_name TEXT NOT NULL,
+      customer_email TEXT NOT NULL,
+      customer_phone TEXT NOT NULL,
+      company_name TEXT,
+      quantity INTEGER NOT NULL DEFAULT 1 CHECK(quantity > 0),
+      urgency TEXT NOT NULL DEFAULT 'standard',
+      preferred_timeline TEXT,
+      budget TEXT,
+      notes TEXT,
+      status TEXT NOT NULL DEFAULT 'new'
+        CHECK(status IN ('new', 'reviewing', 'confirmed', 'in_progress', 'completed', 'cancelled')),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
   return database;
 }
@@ -226,6 +245,61 @@ function getOrigin(request) {
   ) {
     throw new HttpError(403, 'A same-origin request is required.');
   }
+}
+
+function validateOrderInput(input) {
+  const allowedKeys = [
+    'itemType', 'itemName', 'itemCategory', 'customerName', 'customerEmail', 'customerPhone',
+    'companyName', 'quantity', 'urgency', 'preferredTimeline', 'budget', 'notes'
+  ];
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new HttpError(400, 'Order details are required.');
+  }
+  if (Object.keys(input).some((key) => !allowedKeys.includes(key))) {
+    throw new HttpError(400, 'The order contains unsupported fields.');
+  }
+  const text = (value, label, maxLength, required = true) => {
+    const normalized = typeof value === 'string' ? value.trim() : '';
+    if (required && !normalized) throw new HttpError(400, `Enter a valid ${label}.`);
+    if (normalized.length > maxLength) throw new HttpError(400, `${label[0].toUpperCase()}${label.slice(1)} is too long.`);
+    return normalized;
+  };
+  const itemType = text(input.itemType, 'item type', 12);
+  if (!['product', 'service'].includes(itemType)) throw new HttpError(400, 'Choose whether this order is for a product or service.');
+  const itemName = text(input.itemName, 'item name', 180);
+  const itemCategory = text(input.itemCategory, 'item category', 80, false);
+  const customerName = text(input.customerName, 'customer name', 120);
+  const customerEmail = text(input.customerEmail, 'customer email', 254);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+    throw new HttpError(400, 'Enter a valid customer email address.');
+  }
+  const customerPhone = text(input.customerPhone, 'customer phone', 40);
+  if (!/^[+()\d.\-\s]{7,40}$/.test(customerPhone)) {
+    throw new HttpError(400, 'Enter a valid phone number.');
+  }
+  const companyName = text(input.companyName, 'company name', 160, false);
+  const quantity = Number(input.quantity);
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 9999) {
+    throw new HttpError(400, 'Enter a valid quantity between 1 and 9,999.');
+  }
+  const urgency = text(input.urgency, 'urgency', 40, false) || 'standard';
+  const preferredTimeline = text(input.preferredTimeline, 'preferred timeline', 80, false);
+  const budget = text(input.budget, 'budget', 80, false);
+  const notes = text(input.notes, 'notes', 2000, false);
+  return {
+    itemType,
+    itemName,
+    itemCategory,
+    customerName,
+    customerEmail,
+    customerPhone,
+    companyName,
+    quantity,
+    urgency,
+    preferredTimeline,
+    budget,
+    notes
+  };
 }
 
 function validateApplication(input) {
@@ -381,6 +455,44 @@ function createAppServer() {
     `${SITE_ADMIN_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Strict; Secure; Max-Age=${maxAge}`
   );
 
+  const sendOrderTelegramNotification = async (order) => {
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.TELEGRAM_CHAT_ID;
+    if (!token || !chatId) return { sent: false, reason: 'missing-env' };
+
+    const summary = [
+      'MI CORTEX X INC. order request',
+      `Type: ${order.itemType}`,
+      `Item: ${order.itemName}`,
+      `Customer: ${order.customerName}`,
+      `Email: ${order.customerEmail}`,
+      `Phone: ${order.customerPhone}`,
+      order.companyName ? `Company: ${order.companyName}` : null,
+      `Quantity: ${order.quantity}`,
+      `Urgency: ${order.urgency}`,
+      order.preferredTimeline ? `Preferred timeline: ${order.preferredTimeline}` : null,
+      order.budget ? `Budget: ${order.budget}` : null,
+      order.notes ? `Notes: ${order.notes}` : null
+    ].filter(Boolean).join('\n');
+
+    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: String(chatId),
+        text: summary,
+        disable_web_page_preview: true
+      })
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.ok) {
+      console.warn('Telegram order notification failed.');
+      return { sent: false, reason: 'telegram-error' };
+    }
+    return { sent: true, reason: 'telegram-ok' };
+  };
+
   const handleApi = async (request, response, url) => {
     if (url.pathname === '/api/site-admin/login' && request.method === 'POST') {
       getOrigin(request);
@@ -440,6 +552,93 @@ function createAppServer() {
         maxDocumentBytes: MAX_DOCUMENT_BYTES,
         localPrototype: true
       });
+      return;
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/orders') {
+      getOrigin(request);
+      const input = validateOrderInput(await readJson(request, MAX_SMALL_BODY_BYTES));
+      const now = new Date().toISOString();
+      const orderId = crypto.randomUUID();
+      database.prepare(`
+        INSERT INTO orders (
+          id, item_type, item_name, item_category, customer_name, customer_email, customer_phone,
+          company_name, quantity, urgency, preferred_timeline, budget, notes, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)
+      `).run(
+        orderId,
+        input.itemType,
+        input.itemName,
+        input.itemCategory || null,
+        input.customerName,
+        input.customerEmail,
+        input.customerPhone,
+        input.companyName || null,
+        input.quantity,
+        input.urgency,
+        input.preferredTimeline || null,
+        input.budget || null,
+        input.notes || null,
+        now,
+        now
+      );
+      const orderRecord = {
+        id: orderId,
+        itemType: input.itemType,
+        itemName: input.itemName,
+        itemCategory: input.itemCategory || null,
+        customerName: input.customerName,
+        customerEmail: input.customerEmail,
+        customerPhone: input.customerPhone,
+        companyName: input.companyName || null,
+        quantity: input.quantity,
+        urgency: input.urgency,
+        preferredTimeline: input.preferredTimeline || null,
+        budget: input.budget || null,
+        notes: input.notes || null,
+        status: 'new',
+        createdAt: now,
+        updatedAt: now
+      };
+      await sendOrderTelegramNotification(orderRecord).catch(() => undefined);
+      sendJson(response, 201, {
+        id: orderId,
+        status: 'new',
+        received: true,
+        message: 'Your order request was received. Our team will contact you shortly.'
+      });
+      return;
+    }
+
+    if (request.method === 'GET' && url.pathname === '/api/site-admin/orders') {
+      requireSiteAdmin(request);
+      const rows = database.prepare(`
+        SELECT id, item_type AS itemType, item_name AS itemName, item_category AS itemCategory,
+          customer_name AS customerName, customer_email AS customerEmail, customer_phone AS customerPhone,
+          company_name AS companyName, quantity, urgency, preferred_timeline AS preferredTimeline,
+          budget, notes, status, created_at AS createdAt, updated_at AS updatedAt
+        FROM orders ORDER BY created_at DESC, id
+      `).all();
+      sendJson(response, 200, { orders: rows });
+      return;
+    }
+
+    const orderStatusRoute = url.pathname.match(/^\/api\/site-admin\/orders\/([0-9a-f-]{36})$/i);
+    if (orderStatusRoute && request.method === 'PATCH') {
+      requireSiteAdmin(request);
+      getOrigin(request);
+      const input = await readJson(request, MAX_SMALL_BODY_BYTES);
+      const statuses = new Set(['new', 'reviewing', 'confirmed', 'in_progress', 'completed', 'cancelled']);
+      if (!input || typeof input !== 'object' || !statuses.has(input.status)) {
+        throw new HttpError(400, 'Choose a valid order status.');
+      }
+      const result = database.prepare('UPDATE orders SET status = ?, updated_at = ? WHERE id = ?').run(
+        input.status,
+        new Date().toISOString(),
+        orderStatusRoute[1]
+      );
+      if (!result.changes) throw new HttpError(404, 'Order not found.');
+      sendJson(response, 200, { updated: true, status: input.status });
       return;
     }
 

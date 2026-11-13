@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Products &amp; Services | MI CORTEX X INC.</title>
+    <meta name="description" content="Explore MI CORTEX X INC. digital products, applications and proposed technology service prices." />
+    <link rel="icon" type="image/jpeg" href="assets/LOGO.jpg" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-language="en">
+    <header class="topbar">
+      <div class="container navbar">
+        <a href="index.html" class="brand"><img src="assets/LOGO.jpg" alt="MI CORTEX X INC. logo" /><span>MI CORTEX X INC.<small>BEYOND TECHNOLOGY. BEYOND LIMITS.</small></span></a>
+        <nav class="nav-links" aria-label="Main navigation">
+          <a href="index.html">Home</a>
+          <a href="about.html">About Us</a>
+          <a href="services.html">Products and Services</a>
+          <a href="projects.html">Projects</a>
+          <a href="sub-companies.html">Sub-Companies</a>
+          <a href="careers.html">Careers</a>
+          <a href="contact.html">Contact</a>
+        </nav>
+        <div class="nav-actions">
+          <div class="lang-switch"><button type="button" data-lang-toggle="en" class="active" aria-pressed="true">EN</button><button type="button" data-lang-toggle="si" aria-pressed="false">සිංහල</button></div>
+          <a class="btn btn-primary" href="contact.html">Get in touch</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="services-page">
+      <section class="services-catalog" aria-labelledby="services-title">
+        <div class="container">
+          <header class="services-hero">
+            <div class="breadcrumbs">Home / Products &amp; Services</div>
+            <div class="services-hero__brand">MI CORTEX X INC.</div>
+            <h1 id="services-title">PRODUCTS &amp; SERVICES</h1>
+            <p class="services-hero__edition">PROPOSED PRICE LIST — 2026</p>
+            <p class="services-hero__tagline">BEYOND TECHNOLOGY. BEYOND LIMITS.</p>
+            <p class="services-hero__intro">Explore MI CORTEX X INC. digital products, platforms, applications and technology services. All prices are in Sri Lankan Rupees (LKR); service prices are proposed starting prices.</p>
+          </header>
+
+          <div class="catalog-mode-switch" role="tablist" aria-label="Choose products or services">
+            <button type="button" id="catalog-tab-products" class="catalog-mode-button is-active" data-catalog-mode="products" role="tab" aria-controls="catalog-products" aria-selected="true" tabindex="0">
+              <span class="catalog-mode-button__icon" aria-hidden="true">▦</span>
+              <span class="catalog-mode-button__copy"><strong>PRODUCTS</strong><small>Explore products, platforms and applications</small></span>
+            </button>
+            <button type="button" id="catalog-tab-services" class="catalog-mode-button" data-catalog-mode="services" role="tab" aria-controls="catalog-services" aria-selected="false" tabindex="-1">
+              <span class="catalog-mode-button__icon" aria-hidden="true">⌘</span>
+              <span class="catalog-mode-button__copy"><strong>SERVICES</strong><small>Browse services and proposed starting prices</small></span>
+            </button>
+          </div>
+
+          <form class="services-filter-form" role="search" aria-label="Search and filter products and services">
+            <label class="services-field services-field--search">
+              <span class="services-field__label">Search</span>
+              <span class="services-field__control services-field__control--search">
+                <span aria-hidden="true">⌕</span>
+                <input type="search" name="search" placeholder="Search products and applications..." autocomplete="off" aria-label="Search products and applications" />
+              </span>
+            </label>
+
+            <label class="services-field" data-filter-for="products">
+              <span class="services-field__label">Product category</span>
+              <select name="productCategory" aria-label="Product category filter">
+                <option value="all">All Product Categories</option>
+                <option value="core-ai">CORTEX CORE AI</option>
+                <option value="canva-pro">CANVA PRO</option>
+                <option value="cortex-pay">MI CORTEX PAY</option>
+                <option value="cortex-cloud">MI CORTEX CLOUD</option>
+                <option value="cortex-qr">MI CORTEX QR</option>
+                <option value="cortex-travel">MI CORTEX TRAVEL</option>
+                <option value="cortex-canvas">MI CORTEX CANVAS</option>
+                <option value="office-hub">MI CORTEX OFFICE HUB</option>
+                <option value="education">MI CORTEX EDUCATION</option>
+                <option value="bazaar">MI CORTEX BAZAAR</option>
+                <option value="communicate-social">COMMUNICATE &amp; SOCIAL</option>
+                <option value="ride-foods">RIDE &amp; FOODS</option>
+                <option value="photos">MI CORTEX PHOTOS</option>
+              </select>
+            </label>
+
+            <label class="services-field" data-filter-for="services" hidden>
+              <span class="services-field__label">Service category</span>
+              <select name="serviceCategory" aria-label="Service category filter">
+                <option value="all">All Service Categories</option>
+              </select>
+            </label>
+
+            <label class="services-field" data-filter-for="products">
+              <span class="services-field__label">Premium plans</span>
+              <select name="premium" aria-label="Premium plan filter">
+                <option value="all">All product plans</option>
+                <option value="premium">Premium only</option>
+              </select>
+            </label>
+
+            <label class="services-field" data-filter-for="products">
+              <span class="services-field__label">Availability by price</span>
+              <select name="productPrice" aria-label="Product price filter">
+                <option value="any">Any Price</option>
+                <option value="free">Free plan</option>
+                <option value="paid">Paid plan</option>
+              </select>
+            </label>
+
+            <label class="services-field">
+              <span class="services-field__label">Compare price period</span>
+              <select name="pricePeriod" aria-label="Price period for sorting">
+                <option value="monthly" data-period-for="products">Monthly</option>
+                <option value="yearly" data-period-for="products">Yearly</option>
+                <option value="weekly" data-period-for="products">Weekly</option>
+                <option value="lifetime" data-period-for="products">Lifetime</option>
+                <option value="starting" data-period-for="services" hidden>Starting price</option>
+                <option value="service-monthly" data-period-for="services" hidden>Monthly service</option>
+              </select>
+            </label>
+
+            <label class="services-field">
+              <span class="services-field__label">Sort by price</span>
+              <select name="sort" aria-label="Sort by price">
+                <option value="default">Default</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+              </select>
+            </label>
+
+            <button type="reset" class="services-clear-button">Clear Filters</button>
+          </form>
+
+          <div class="catalog-results-meta">
+            <p class="catalog-results-count" role="status" aria-live="polite">0 results</p>
+            <p class="catalog-pricing-note">All prices are in Sri Lankan Rupees (LKR). Service prices are proposed starting prices and may change according to project scope, complexity and required features.</p>
+          </div>
+
+          <div class="catalog-groups">
+            <section class="catalog-group" id="catalog-products" data-group="products" role="tabpanel" aria-labelledby="catalog-tab-products">
+              <div class="catalog-group__header">
+                <h2>Products</h2>
+              </div>
+
+              <div class="catalog-grid">
+                <article class="catalog-item product-card" data-name="CORTEX CORE AI (MI AI)" data-category="products" data-price-tier="paid" data-price-number="500" data-premium="true">
+                  <div class="catalog-item__header">
+                    <h3>CORTEX CORE AI (MI AI)</h3>
+                    <span class="status-pill status-pill--pending">PENDING</span>
+                  </div>
+                  <ul class="plan-list">
+                    <li><strong>CORTEX CORE AI PRO PLAN</strong><span>Monthly: Rs. 500</span><span>Yearly: Rs. 5,000</span></li>
+                    <li><strong>CORTEX CORE AI PLUS PLAN</strong><span>Monthly: Rs. 1,000</span><span>Yearly: Rs. 10,000</span></li>
+                    <li class="premium-plan"><strong>CORTEX CORE PREMIUM</strong><span>Monthly: Rs. 5,000</span><span>Yearly: Rs. 50,000</span></li>
+                  </ul>
+                </article>
+
+                <article class="catalog-item product-card" data-name="CANVA PRO — REAL CANVA PRO ACCESS" data-category="products" data-price-tier="paid" data-price-number="200" data-destination-url="https://canva-pro-cortex-x.vercel.app">
+                  <div class="catalog-item__header">
+                    <h3>CANVA PRO — REAL CANVA PRO ACCESS</h3>
+                    <span class="status-pill status-pill--available">AVAILABLE</span>
+                  </div>
+                  <ul class="plan-list">
+                    <li><strong>Weekly</strong><span>Rs. 200</span></li>
+                    <li><strong>Monthly</strong><span>Rs. 500</span></li>
+                    <li><strong>Yearly</strong><span>Rs. 2,000</span></li>
+                    <li><strong>Lifetime</strong><span>Rs. 5,000</span></li>
+                  </ul>
+                </article>
+
+                <article class="catalog-item product-card" data-name="MI CORTEX PAY" data-category="products" data-price-tier="paid" data-price-number="500">
+                  <div class="catalog-item__header">
+                    <h3>MI CORTEX PAY</h3>
+                    <span class="status-pill status-pill--pending">PENDING</span>
+                  </div>
+                  <ul class="plan-list">
+                    <li><strong>Monthly</strong><span>Rs. 500</span></li>
+                    <li><strong>Yearly</strong><span>Rs. 5,000</span></li>
+                  </ul>
+                </article>
+
+                <article class="catalog-item product-card" data-name="MI CORTEX CLOUD" data-category="products" data-price-tier="free" data-price-number="0">
+                  <div class="catalog-item__header">
+                    <h3>MI CORTEX CLOUD</h3>
+                    <span class="status-pill status-pill--pending">PENDING</span>
+                  </div>
+                  <p class="catalog-item__note">Plan: FREE</p>
+                </article>
+
+                <article class="catalog-item product-card" data-name="MI CORTEX QR" data-category="products" data-price-tier="free" data-price-number="0">
+                  <div class="catalog-item__header">
+                    <h3>MI CORTEX QR</h3>
+                    <span class="status-pill status-pill--pending">PENDING</span>
+                  </div>
+                  <p class="catalog-item__note">Plan: FREE</p>
+                </article>
+
+                <article class="catalog-item product-card" data-name="MI CORTEX TRAVEL" data-category="products" data-price-tier="free" data-price-number="0">
+                  <div class="catalog-item__header">
+                    <h3>MI CORTEX TRAVEL</h3>
+                    <span class="status-pill status-pill--pending">PENDING</span>
+                  </div>
+                  <p class="catalog-item__note">Plan: FREE</p>
+                </article>
+
+                <article class="catalog-item product-card" data-name="MI CORTEX CANVAS" data-category="products" data-price-tier="free" data-price-number="0">
+                  <div class="catalog-item__header">
+                    <h3>MI CORTEX CANVAS</h3>
+                    <span class="status-pill status-pill--pending">PENDING</span>
+                  </div>
+                  <ul class="plan-list">
+                    <li><strong>FREE</strong></li>
+                    <li><strong>PRO</strong><span>Pricing not announced</span></li>
+                  </ul>
+                </article>
+
+                <article class="catalog-item product-card" data-name="MI CORTEX OFFICE HUB" data-category="products" data-price-tier="paid" data-price-number="3000">
+                  <div class="catalog-item__header">
+                    <h3>MI CORTEX OFFICE HUB</h3>
+                    <span class="status-pill status-pill--pending">PENDING</span>
+                  </div>
+                  <p class="catalog-item__lead">MI CORTEX OFFICE HUB brings its office applications together in one unified package. Users can download the Office Hub to access its included applications, or obtain individual applications separately.</p>
+                  <ul class="plan-list">
+                    <li><strong>Individual application — Monthly</strong><span>Rs. 500</span></li>
+                    <li><strong>Individual application — Annually</strong><span>Rs. 5,000</span></li>
+                    <li><strong>MI CORTEX OFFICE HUB — Monthly</strong><span>Rs. 3,000</span></li>
+                    <li><strong>MI CORTEX OFFICE HUB — Annually</strong><span>Rs. 10,000</span></li>
+                  </ul>
+                </article>
+
+                <article class="catalog-item product-card" data-name="MI CORTEX WRITER" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX WRITER</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX SHEETS" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX SHEETS</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX SLIDES" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX SLIDES</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX PDF" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX PDF</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX MAIL" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX MAIL</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX CALENDAR" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX CALENDAR</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX NOTES" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX NOTES</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX FILES" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX FILES</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX CALCULATOR" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX CALCULATOR</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+
+                <article class="catalog-item product-card" data-name="MI CORTEX EDUCATION" data-category="products" data-price-tier="free" data-price-number="0">
+                  <div class="catalog-item__header">
+                    <h3>MI CORTEX EDUCATION</h3>
+                    <span class="status-pill status-pill--pending">PENDING</span>
+                  </div>
+                  <ul class="plan-list">
+                    <li><strong>FREE PLAN</strong></li>
+                    <li><strong>PRO PLAN</strong><span>Monthly: Rs. 1,000</span><span>Yearly: Rs. 10,000</span></li>
+                  </ul>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX CLASSROOM" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX CLASSROOM</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX EXAM" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX EXAM</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX QUIZ" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX QUIZ</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX STUDENT" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX STUDENT</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX TEACHER" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX TEACHER</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX ATTENDANCE" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX ATTENDANCE</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX LIBRARY" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX LIBRARY</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Individual application pricing is not announced. Education package plans are listed with MI CORTEX EDUCATION.</p>
+                </article>
+
+                <article class="catalog-item product-card" data-name="MI CORTEX BAZAAR" data-category="products" data-price-tier="paid" data-price-number="1000">
+                  <div class="catalog-item__header">
+                    <h3>MI CORTEX BAZAAR</h3>
+                    <span class="status-pill status-pill--pending">PENDING</span>
+                  </div>
+                  <p class="catalog-item__lead">Users can purchase products through the platform. Users who want to publish advertisements or promote their own productions must pay a small monthly fee.</p>
+                  <ul class="plan-list">
+                    <li><strong>Monthly advertising / promotion</strong><span>Rs. 1,000</span></li>
+                  </ul>
+                </article>
+
+                <article class="catalog-item product-card" data-name="MI CORTEX CHAT" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX CHAT</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX MEET" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX MEET</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX CONNECT" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX CONNECT</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX MAIL" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX MAIL</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX SUPPORT" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX SUPPORT</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX SOCIAL" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX SOCIAL</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX INSTA" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX INSTA</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX REELO" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX REELO</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX VIDORA" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX VIDORA</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX SNAP" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX SNAP</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX TUNES" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX TUNES</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+
+                <article class="catalog-item product-card" data-name="MI CORTEX RENT" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX RENT</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX RIDE" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX RIDE</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX DRIVER" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX DRIVER</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX EXPRESS" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX EXPRESS</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX FOOD" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX FOOD</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX FRESH" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX FRESH</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX DINE" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX DINE</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+                <article class="catalog-item product-card" data-name="MI CORTEX BAKERY" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX BAKERY</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+
+                <article class="catalog-item product-card" data-name="MI CORTEX PHOTOS" data-category="products" data-price-tier="unannounced" data-price-number="">
+                  <div class="catalog-item__header"><h3>MI CORTEX PHOTOS</h3><span class="status-pill status-pill--pending">PENDING</span></div>
+                  <p class="catalog-item__note">Pricing not announced</p>
+                </article>
+              </div>
+            </section>
+
+            <section class="catalog-group" id="catalog-services" data-group="services" role="tabpanel" aria-labelledby="catalog-tab-services" hidden>
+              <div class="catalog-group__header">
+                <h2>Services</h2>
+              </div>
+
+              <div class="service-category">
+                <h3>01. Website Development</h3>
+                <ul class="service-list">
+                  <li class="catalog-item" data-name="Corporate Website Development" data-category="services" data-price-tier="paid" data-price-number="85000"><span>Corporate Website Development</span><span>Rs. 85,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Business Website Development" data-category="services" data-price-tier="paid" data-price-number="55000"><span>Business Website Development</span><span>Rs. 55,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="E-commerce Website Development" data-category="services" data-price-tier="paid" data-price-number="180000"><span>E-commerce Website Development</span><span>Rs. 180,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Portfolio Website Development" data-category="services" data-price-tier="paid" data-price-number="40000"><span>Portfolio Website Development</span><span>Rs. 40,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Educational Website Development" data-category="services" data-price-tier="paid" data-price-number="95000"><span>Educational Website Development</span><span>Rs. 95,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Landing Page Development" data-category="services" data-price-tier="paid" data-price-number="30000"><span>Landing Page Development</span><span>Rs. 30,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="News & Media Website Development" data-category="services" data-price-tier="paid" data-price-number="100000"><span>News &amp; Media Website Development</span><span>Rs. 100,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Personal Website Development" data-category="services" data-price-tier="paid" data-price-number="35000"><span>Personal Website Development</span><span>Rs. 35,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Membership Website Development" data-category="services" data-price-tier="paid" data-price-number="110000"><span>Membership Website Development</span><span>Rs. 110,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Website Redesign" data-category="services" data-price-tier="paid" data-price-number="45000"><span>Website Redesign</span><span>Rs. 45,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Website Maintenance" data-category="services" data-price-tier="paid" data-price-number="10000"><span>Website Maintenance</span><span>Rs. 10,000/month</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Website Speed Optimization" data-category="services" data-price-tier="paid" data-price-number="20000"><span>Website Speed Optimization</span><span>Rs. 20,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Multilingual Website Development" data-category="services" data-price-tier="paid" data-price-number="100000"><span>Multilingual Website Development</span><span>Rs. 100,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                </ul>
+              </div>
+
+              <div class="service-category">
+                <h3>02. Web Application Development</h3>
+                <ul class="service-list">
+                  <li class="catalog-item" data-name="Custom Web Application Development" data-category="services" data-price-tier="paid" data-price-number="250000"><span>Custom Web Application Development</span><span>Rs. 250,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Enterprise Web Application Development" data-category="services" data-price-tier="paid" data-price-number="500000"><span>Enterprise Web Application Development</span><span>Rs. 500,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Progressive Web App (PWA) Development" data-category="services" data-price-tier="paid" data-price-number="175000"><span>Progressive Web App (PWA) Development</span><span>Rs. 175,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="SaaS Platform Development" data-category="services" data-price-tier="paid" data-price-number="350000"><span>SaaS Platform Development</span><span>Rs. 350,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Customer Portal Development" data-category="services" data-price-tier="paid" data-price-number="175000"><span>Customer Portal Development</span><span>Rs. 175,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Admin Dashboard Development" data-category="services" data-price-tier="paid" data-price-number="85000"><span>Admin Dashboard Development</span><span>Rs. 85,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Online Booking System Development" data-category="services" data-price-tier="paid" data-price-number="120000"><span>Online Booking System Development</span><span>Rs. 120,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Online Marketplace Development" data-category="services" data-price-tier="paid" data-price-number="350000"><span>Online Marketplace Development</span><span>Rs. 350,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Document Management System" data-category="services" data-price-tier="paid" data-price-number="150000"><span>Document Management System</span><span>Rs. 150,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Workflow Management System" data-category="services" data-price-tier="paid" data-price-number="175000"><span>Workflow Management System</span><span>Rs. 175,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Subscription Management Platform" data-category="services" data-price-tier="paid" data-price-number="200000"><span>Subscription Management Platform</span><span>Rs. 200,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Multi-Tenant Application Development" data-category="services" data-price-tier="paid" data-price-number="450000"><span>Multi-Tenant Application Development</span><span>Rs. 450,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                </ul>
+              </div>
+
+              <div class="service-category">
+                <h3>03. Mobile Application Development</h3>
+                <ul class="service-list">
+                  <li class="catalog-item" data-name="Android Application Development" data-category="services" data-price-tier="paid" data-price-number="350000"><span>Android Application Development</span><span>Rs. 350,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="iOS Application Development" data-category="services" data-price-tier="paid" data-price-number="450000"><span>iOS Application Development</span><span>Rs. 450,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Cross-Platform App Development" data-category="services" data-price-tier="paid" data-price-number="400000"><span>Cross-Platform App Development</span><span>Rs. 400,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Business & Service Mobile Apps" data-category="services" data-price-tier="paid" data-price-number="350000"><span>Business &amp; Service Mobile Apps</span><span>Rs. 350,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="E-commerce Mobile Apps" data-category="services" data-price-tier="paid" data-price-number="500000"><span>E-commerce Mobile Apps</span><span>Rs. 500,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Financial Application Development" data-category="services" data-price-tier="paid" data-price-number="500000"><span>Financial Application Development</span><span>Rs. 500,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Productivity Application Development" data-category="services" data-price-tier="paid" data-price-number="300000"><span>Productivity Application Development</span><span>Rs. 300,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Social Networking Application Development" data-category="services" data-price-tier="paid" data-price-number="600000"><span>Social Networking Application Development</span><span>Rs. 600,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Customer Service Mobile Apps" data-category="services" data-price-tier="paid" data-price-number="350000"><span>Customer Service Mobile Apps</span><span>Rs. 350,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Mobile App UI/UX Design" data-category="services" data-price-tier="paid" data-price-number="50000"><span>Mobile App UI/UX Design</span><span>Rs. 50,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Mobile App Maintenance" data-category="services" data-price-tier="paid" data-price-number="20000"><span>Mobile App Maintenance</span><span>Rs. 20,000/month</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                </ul>
+              </div>
+
+              <div class="service-category">
+                <h3>04. Artificial Intelligence &amp; Machine Learning</h3>
+                <ul class="service-list">
+                  <li class="catalog-item" data-name="AI Assistant Development" data-category="services" data-price-tier="paid" data-price-number="150000"><span>AI Assistant Development</span><span>Rs. 150,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="AI Chatbot Development" data-category="services" data-price-tier="paid" data-price-number="75000"><span>AI Chatbot Development</span><span>Rs. 75,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="AI Agent Development" data-category="services" data-price-tier="paid" data-price-number="200000"><span>AI Agent Development</span><span>Rs. 200,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Generative AI Integration" data-category="services" data-price-tier="paid" data-price-number="100000"><span>Generative AI Integration</span><span>Rs. 100,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Custom AI Application Development" data-category="services" data-price-tier="paid" data-price-number="300000"><span>Custom AI Application Development</span><span>Rs. 300,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Machine Learning Solutions" data-category="services" data-price-tier="paid" data-price-number="250000"><span>Machine Learning Solutions</span><span>Rs. 250,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Natural Language Processing Solutions" data-category="services" data-price-tier="paid" data-price-number="200000"><span>Natural Language Processing Solutions</span><span>Rs. 200,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="AI Content Generation Systems" data-category="services" data-price-tier="paid" data-price-number="100000"><span>AI Content Generation Systems</span><span>Rs. 100,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="AI Document Processing Systems" data-category="services" data-price-tier="paid" data-price-number="150000"><span>AI Document Processing Systems</span><span>Rs. 150,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="AI-Powered Data Analysis" data-category="services" data-price-tier="paid" data-price-number="100000"><span>AI-Powered Data Analysis</span><span>Rs. 100,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Recommendation Systems" data-category="services" data-price-tier="paid" data-price-number="200000"><span>Recommendation Systems</span><span>Rs. 200,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="AI Business Process Automation" data-category="services" data-price-tier="paid" data-price-number="150000"><span>AI Business Process Automation</span><span>Rs. 150,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Voice AI Solutions" data-category="services" data-price-tier="paid" data-price-number="200000"><span>Voice AI Solutions</span><span>Rs. 200,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="AI Customer Support Systems" data-category="services" data-price-tier="paid" data-price-number="150000"><span>AI Customer Support Systems</span><span>Rs. 150,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                </ul>
+              </div>
+
+              <div class="service-category">
+                <h3>05. Custom Software &amp; Business Systems</h3>
+                <ul class="service-list">
+                  <li class="catalog-item" data-name="Custom Software Development" data-category="services" data-price-tier="paid" data-price-number="250000"><span>Custom Software Development</span><span>Rs. 250,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Enterprise Software Development" data-category="services" data-price-tier="paid" data-price-number="500000"><span>Enterprise Software Development</span><span>Rs. 500,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="ERP System Development" data-category="services" data-price-tier="paid" data-price-number="450000"><span>ERP System Development</span><span>Rs. 450,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="CRM System Development" data-category="services" data-price-tier="paid" data-price-number="250000"><span>CRM System Development</span><span>Rs. 250,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="HR Management System Development" data-category="services" data-price-tier="paid" data-price-number="220000"><span>HR Management System Development</span><span>Rs. 220,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Inventory Management System" data-category="services" data-price-tier="paid" data-price-number="180000"><span>Inventory Management System</span><span>Rs. 180,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Project Management System" data-category="services" data-price-tier="paid" data-price-number="220000"><span>Project Management System</span><span>Rs. 220,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="School Management System" data-category="services" data-price-tier="paid" data-price-number="250000"><span>School Management System</span><span>Rs. 250,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Student Management System" data-category="services" data-price-tier="paid" data-price-number="180000"><span>Student Management System</span><span>Rs. 180,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Hospital Management System" data-category="services" data-price-tier="paid" data-price-number="500000"><span>Hospital Management System</span><span>Rs. 500,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Appointment Management System" data-category="services" data-price-tier="paid" data-price-number="120000"><span>Appointment Management System</span><span>Rs. 120,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Billing & Invoicing System" data-category="services" data-price-tier="paid" data-price-number="120000"><span>Billing &amp; Invoicing System</span><span>Rs. 120,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Point of Sale (POS) System" data-category="services" data-price-tier="paid" data-price-number="180000"><span>Point of Sale (POS) System</span><span>Rs. 180,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Financial Management System" data-category="services" data-price-tier="paid" data-price-number="250000"><span>Financial Management System</span><span>Rs. 250,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Employee Management System" data-category="services" data-price-tier="paid" data-price-number="180000"><span>Employee Management System</span><span>Rs. 180,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                </ul>
+              </div>
+
+              <div class="service-category">
+                <h3>06. Database, Backend &amp; API Development</h3>
+                <ul class="service-list">
+                  <li class="catalog-item" data-name="Backend Development" data-category="services" data-price-tier="paid" data-price-number="100000"><span>Backend Development</span><span>Rs. 100,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Database Design & Architecture" data-category="services" data-price-tier="paid" data-price-number="65000"><span>Database Design &amp; Architecture</span><span>Rs. 65,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Database Management" data-category="services" data-price-tier="paid" data-price-number="35000"><span>Database Management</span><span>Rs. 35,000/month</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="REST API Development" data-category="services" data-price-tier="paid" data-price-number="65000"><span>REST API Development</span><span>Rs. 65,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="GraphQL API Development" data-category="services" data-price-tier="paid" data-price-number="90000"><span>GraphQL API Development</span><span>Rs. 90,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Third-Party API Integration" data-category="services" data-price-tier="paid" data-price-number="35000"><span>Third-Party API Integration</span><span>Rs. 35,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Payment Gateway Integration" data-category="services" data-price-tier="paid" data-price-number="35000"><span>Payment Gateway Integration</span><span>Rs. 35,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Authentication System Development" data-category="services" data-price-tier="paid" data-price-number="50000"><span>Authentication System Development</span><span>Rs. 50,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Real-Time Application Development" data-category="services" data-price-tier="paid" data-price-number="200000"><span>Real-Time Application Development</span><span>Rs. 200,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Database Migration" data-category="services" data-price-tier="paid" data-price-number="50000"><span>Database Migration</span><span>Rs. 50,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                </ul>
+              </div>
+
+              <div class="service-category">
+                <h3>07. Cloud &amp; Software Infrastructure</h3>
+                <ul class="service-list">
+                  <li class="catalog-item" data-name="Cloud Application Development" data-category="services" data-price-tier="paid" data-price-number="250000"><span>Cloud Application Development</span><span>Rs. 250,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Cloud Migration" data-category="services" data-price-tier="paid" data-price-number="100000"><span>Cloud Migration</span><span>Rs. 100,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Cloud Database Setup" data-category="services" data-price-tier="paid" data-price-number="65000"><span>Cloud Database Setup</span><span>Rs. 65,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Application Deployment & Configuration" data-category="services" data-price-tier="paid" data-price-number="35000"><span>Application Deployment &amp; Configuration</span><span>Rs. 35,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Cloud Infrastructure Management" data-category="services" data-price-tier="paid" data-price-number="30000"><span>Cloud Infrastructure Management</span><span>Rs. 30,000/month</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Hosting Management" data-category="services" data-price-tier="paid" data-price-number="8000"><span>Hosting Management</span><span>Rs. 8,000/month</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Domain & DNS Configuration" data-category="services" data-price-tier="paid" data-price-number="8000"><span>Domain &amp; DNS Configuration</span><span>Rs. 8,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Business Email Setup" data-category="services" data-price-tier="paid" data-price-number="8000"><span>Business Email Setup</span><span>Rs. 8,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Automated Backup Solutions" data-category="services" data-price-tier="paid" data-price-number="25000"><span>Automated Backup Solutions</span><span>Rs. 25,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="DevOps & CI/CD Implementation" data-category="services" data-price-tier="paid" data-price-number="100000"><span>DevOps &amp; CI/CD Implementation</span><span>Rs. 100,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                </ul>
+              </div>
+
+              <div class="service-category">
+                <h3>08. Cybersecurity &amp; Software Quality</h3>
+                <ul class="service-list">
+                  <li class="catalog-item" data-name="Website Security Assessment" data-category="services" data-price-tier="paid" data-price-number="35000"><span>Website Security Assessment</span><span>Rs. 35,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Web Application Security Assessment" data-category="services" data-price-tier="paid" data-price-number="75000"><span>Web Application Security Assessment</span><span>Rs. 75,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Cybersecurity Consultation" data-category="services" data-price-tier="paid" data-price-number="40000"><span>Cybersecurity Consultation</span><span>Rs. 40,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Secure Authentication Implementation" data-category="services" data-price-tier="paid" data-price-number="50000"><span>Secure Authentication Implementation</span><span>Rs. 50,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Identity & Access Management" data-category="services" data-price-tier="paid" data-price-number="100000"><span>Identity &amp; Access Management</span><span>Rs. 100,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Data Protection Implementation" data-category="services" data-price-tier="paid" data-price-number="60000"><span>Data Protection Implementation</span><span>Rs. 60,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Software Quality Assurance (QA)" data-category="services" data-price-tier="paid" data-price-number="40000"><span>Software Quality Assurance (QA)</span><span>Rs. 40,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Automated Software Testing" data-category="services" data-price-tier="paid" data-price-number="65000"><span>Automated Software Testing</span><span>Rs. 65,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Performance Testing" data-category="services" data-price-tier="paid" data-price-number="40000"><span>Performance Testing</span><span>Rs. 40,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Software Debugging & Error Resolution" data-category="services" data-price-tier="paid" data-price-number="15000"><span>Software Debugging &amp; Error Resolution</span><span>Rs. 15,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                </ul>
+              </div>
+
+              <div class="service-category">
+                <h3>09. UI/UX &amp; Digital Creative Services</h3>
+                <ul class="service-list">
+                  <li class="catalog-item" data-name="UI/UX Design" data-category="services" data-price-tier="paid" data-price-number="45000"><span>UI/UX Design</span><span>Rs. 45,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Website Interface Design" data-category="services" data-price-tier="paid" data-price-number="40000"><span>Website Interface Design</span><span>Rs. 40,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Mobile App Interface Design" data-category="services" data-price-tier="paid" data-price-number="50000"><span>Mobile App Interface Design</span><span>Rs. 50,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Logo & Brand Identity Design" data-category="services" data-price-tier="paid" data-price-number="25000"><span>Logo &amp; Brand Identity Design</span><span>Rs. 25,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Digital Graphic Design" data-category="services" data-price-tier="paid" data-price-number="6000"><span>Digital Graphic Design</span><span>Rs. 6,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Social Media Creative Design" data-category="services" data-price-tier="paid" data-price-number="4000"><span>Social Media Creative Design</span><span>Rs. 4,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Banner & Poster Design" data-category="services" data-price-tier="paid" data-price-number="5000"><span>Banner &amp; Poster Design</span><span>Rs. 5,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Professional Presentation Design" data-category="services" data-price-tier="paid" data-price-number="8000"><span>Professional Presentation Design</span><span>Rs. 8,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Motion Graphics Design" data-category="services" data-price-tier="paid" data-price-number="20000"><span>Motion Graphics Design</span><span>Rs. 20,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Interactive Prototype Development" data-category="services" data-price-tier="paid" data-price-number="45000"><span>Interactive Prototype Development</span><span>Rs. 45,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                </ul>
+              </div>
+
+              <div class="service-category">
+                <h3>10. Digital Marketing &amp; Business Growth</h3>
+                <ul class="service-list">
+                  <li class="catalog-item" data-name="Digital Marketing Strategy" data-category="services" data-price-tier="paid" data-price-number="35000"><span>Digital Marketing Strategy</span><span>Rs. 35,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="SEO" data-category="services" data-price-tier="paid" data-price-number="35000"><span>SEO</span><span>Rs. 35,000/month</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="SEM" data-category="services" data-price-tier="paid" data-price-number="30000"><span>SEM</span><span>Rs. 30,000/month</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Social Media Management" data-category="services" data-price-tier="paid" data-price-number="30000"><span>Social Media Management</span><span>Rs. 30,000/month</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Digital Advertising Management" data-category="services" data-price-tier="paid" data-price-number="20000"><span>Digital Advertising Management</span><span>Rs. 20,000/month</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Digital Content Creation" data-category="services" data-price-tier="paid" data-price-number="25000"><span>Digital Content Creation</span><span>Rs. 25,000/month</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Email Marketing Management" data-category="services" data-price-tier="paid" data-price-number="20000"><span>Email Marketing Management</span><span>Rs. 20,000/month</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Digital Brand Management" data-category="services" data-price-tier="paid" data-price-number="35000"><span>Digital Brand Management</span><span>Rs. 35,000/month</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Digital Campaign Management" data-category="services" data-price-tier="paid" data-price-number="30000"><span>Digital Campaign Management</span><span>Rs. 30,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Marketing Analytics & Reporting" data-category="services" data-price-tier="paid" data-price-number="20000"><span>Marketing Analytics &amp; Reporting</span><span>Rs. 20,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                </ul>
+              </div>
+
+              <div class="service-category">
+                <h3>11. Education &amp; Online Platforms</h3>
+                <ul class="service-list">
+                  <li class="catalog-item" data-name="Learning Management System (LMS)" data-category="services" data-price-tier="paid" data-price-number="300000"><span>Learning Management System (LMS)</span><span>Rs. 300,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Online Examination System" data-category="services" data-price-tier="paid" data-price-number="220000"><span>Online Examination System</span><span>Rs. 220,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Online Quiz Platform" data-category="services" data-price-tier="paid" data-price-number="150000"><span>Online Quiz Platform</span><span>Rs. 150,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="E-Learning Platform Development" data-category="services" data-price-tier="paid" data-price-number="300000"><span>E-Learning Platform Development</span><span>Rs. 300,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Course Management System" data-category="services" data-price-tier="paid" data-price-number="180000"><span>Course Management System</span><span>Rs. 180,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Digital Certificate Management System" data-category="services" data-price-tier="paid" data-price-number="90000"><span>Digital Certificate Management System</span><span>Rs. 90,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Online Student Registration System" data-category="services" data-price-tier="paid" data-price-number="90000"><span>Online Student Registration System</span><span>Rs. 90,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Student Assessment System" data-category="services" data-price-tier="paid" data-price-number="180000"><span>Student Assessment System</span><span>Rs. 180,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Educational Content Platform" data-category="services" data-price-tier="paid" data-price-number="180000"><span>Educational Content Platform</span><span>Rs. 180,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Virtual Classroom Platform" data-category="services" data-price-tier="paid" data-price-number="250000"><span>Virtual Classroom Platform</span><span>Rs. 250,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                </ul>
+              </div>
+
+              <div class="service-category">
+                <h3>12. Advanced Digital Solutions</h3>
+                <ul class="service-list">
+                  <li class="catalog-item" data-name="Business Process Automation" data-category="services" data-price-tier="paid" data-price-number="100000"><span>Business Process Automation</span><span>Rs. 100,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Digital Transformation Consultation" data-category="services" data-price-tier="paid" data-price-number="65000"><span>Digital Transformation Consultation</span><span>Rs. 65,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Business Intelligence Dashboards" data-category="services" data-price-tier="paid" data-price-number="130000"><span>Business Intelligence Dashboards</span><span>Rs. 130,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Data Analytics Solutions" data-category="services" data-price-tier="paid" data-price-number="75000"><span>Data Analytics Solutions</span><span>Rs. 75,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Data Visualization Solutions" data-category="services" data-price-tier="paid" data-price-number="45000"><span>Data Visualization Solutions</span><span>Rs. 45,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Workflow Automation" data-category="services" data-price-tier="paid" data-price-number="75000"><span>Workflow Automation</span><span>Rs. 75,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Document Automation Systems" data-category="services" data-price-tier="paid" data-price-number="100000"><span>Document Automation Systems</span><span>Rs. 100,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Customer Support Platform Development" data-category="services" data-price-tier="paid" data-price-number="150000"><span>Customer Support Platform Development</span><span>Rs. 150,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Live Chat System Development" data-category="services" data-price-tier="paid" data-price-number="25000"><span>Live Chat System Development</span><span>Rs. 25,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="CRM Automation" data-category="services" data-price-tier="paid" data-price-number="100000"><span>CRM Automation</span><span>Rs. 100,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Advanced Booking Platform" data-category="services" data-price-tier="paid" data-price-number="150000"><span>Advanced Booking Platform</span><span>Rs. 150,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Subscription Platform Development" data-category="services" data-price-tier="paid" data-price-number="200000"><span>Subscription Platform Development</span><span>Rs. 200,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Affiliate Management System" data-category="services" data-price-tier="paid" data-price-number="150000"><span>Affiliate Management System</span><span>Rs. 150,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Customer Loyalty Platform" data-category="services" data-price-tier="paid" data-price-number="130000"><span>Customer Loyalty Platform</span><span>Rs. 130,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                  <li class="catalog-item" data-name="Custom Digital Solution Development" data-category="services" data-price-tier="paid" data-price-number="150000"><span>Custom Digital Solution Development</span><span>Rs. 150,000</span><span class="status-pill status-pill--available">AVAILABLE</span></li>
+                </ul>
+              </div>
+            </section>
+          </div>
+
+          <div class="catalog-empty-state" hidden>No matching products or services. Try changing or clearing your filters.</div>
+
+          <section class="catalog-pricing-section" aria-labelledby="pricing-conditions-title" data-services-only hidden>
+            <div class="catalog-group__header">
+              <h2 id="pricing-conditions-title">Service Pricing &amp; Conditions</h2>
+            </div>
+            <ul class="pricing-rules">
+              <li>All prices are starting prices, not fixed quotations.</li>
+              <li>Final prices depend on project requirements, features, integrations, complexity and delivery time.</li>
+              <li>Domain registration, hosting, cloud usage, paid APIs, third-party subscriptions and other external charges are billed separately unless specifically included in the quotation.</li>
+              <li>Monthly services are recurring and billed monthly.</li>
+              <li>Additional features, major revisions and changes outside the agreed scope may incur extra charges.</li>
+              <li>A written quotation must confirm the scope, deliverables, timeline, payment schedule and support terms before work begins.</li>
+              <li>Payment milestones will be agreed with the customer before the project starts.</li>
+              <li>Maintenance and support packages cover only the services and tasks specified in the agreement.</li>
+              <li>All services are subject to technical feasibility and availability.</li>
+            </ul>
+          </section>
+
+          <footer class="catalog-footer">
+            <strong>MI CORTEX X INC.</strong>
+            <span>BEYOND TECHNOLOGY. BEYOND LIMITS.</span>
+          </footer>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer-grid">
+        <div><div class="brand"><img src="assets/LOGO.jpg" alt="MI CORTEX X INC. logo" /><span>MI CORTEX X INC.</span></div><p>Official website...</p></div>
+        <div><h3>Explore</h3><ul class="list"><li><a href="about.html">About</a></li><li><a href="services.html">Services</a></li><li><a href="projects.html">Projects</a></li><li><a href="contact.html">Contact</a></li></ul></div>
+        <div><h3>Company</h3><ul class="list"><li><a href="faq.html">FAQ</a></li><li><a href="privacy.html">Privacy Policy</a></li><li><a href="terms.html">Terms & Conditions</a></li><li><a href="admin.html">Admin</a></li></ul></div>
+        <div><h3>Contact</h3><ul class="list"><li><a href="mailto:micortexx@gmail.com">micortexx@gmail.com</a></li><li><a href="tel:+94756390621">WhatsApp / Telegram: +94 75 639 0621</a></li><li>Office Address: A/F4/U10, Laksetha Sewana, Maligawatte, Colombo 10, Sri Lanka.</li></ul></div>
+      </div>
+      <div class="container" style="padding-top: 18px; border-top: 1px solid var(--line); margin-top: 20px;"><small>© <span id="year"></span> MI CORTEX X INC. All rights reserved.</small></div>
+    </footer>
+    <script src="script.js?catalog-switcher-20261107-7"></script>
+  </body>
+</html>

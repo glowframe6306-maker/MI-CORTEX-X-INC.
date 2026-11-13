@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard | MI CORTEX X INC.</title>
+    <meta name="description" content="Admin dashboard overview for MI CORTEX X INC." />
+    <link rel="icon" type="image/jpeg" href="/assets/LOGO.jpg" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/admin-login.css" />
+  </head>
+  <body data-language="en">
+    <header class="topbar">
+      <div class="container navbar"><a href="/index.html" class="brand"><img src="/assets/LOGO.jpg" alt="MI CORTEX X INC. logo" /><span>MI CORTEX X INC.<small>BEYOND TECHNOLOGY. BEYOND LIMITS.</small></span></a><nav class="nav-links" aria-label="Main navigation"><a href="/index.html">Home</a><a href="/about.html">About Us</a><a href="/services.html">Products and Services</a><a href="/projects.html">Projects</a><a href="/sub-companies.html">Sub-Companies</a><a href="/careers.html">Careers</a><a href="/contact.html">Contact</a></nav><div class="nav-actions"><div class="lang-switch"><button type="button" data-lang-toggle="en" class="active" aria-pressed="true">EN</button><button type="button" data-lang-toggle="si" aria-pressed="false">සිංහල</button></div><a class="btn btn-primary" href="/contact.html">Get in touch</a></div></div>
+    </header>
+
+    <main>
+      <section class="page-hero"><div class="container"><div><div class="breadcrumbs">Home / Admin</div><h1>Admin Dashboard</h1></div></div></section>
+      <section class="section">
+        <div class="container admin-shell">
+          <aside class="sidebar">
+            <nav>
+              <a class="active" href="#overview">Overview</a>
+              <a href="#content">Website Content Management</a>
+              <a href="#projects">Projects & Portfolio</a>
+              <a href="#services">Services & Pricing</a>
+              <a href="#inquiries">Customer Inquiries</a>
+              <a href="#newsletter">Newsletter</a>
+              <a href="/careers-admin.html">Careers Applications (Local Prototype)</a>
+              <a href="#subcompanies">Sub-Company Management</a>
+              <a href="#analytics">Analytics</a>
+              <a href="#roles">Admin & Roles</a>
+            </nav>
+          </aside>
+          <div>
+            <div class="admin-auth-bar">
+              <span data-site-admin-identity>Verifying CEO session…</span>
+              <button class="btn btn-ghost" type="button" data-site-admin-logout>Sign Out</button>
+              <span class="admin-auth-bar__message" data-site-admin-message role="status" aria-live="polite"></span>
+            </div>
+            <div class="stats-box">
+              <div class="stat-box"><strong>12</strong> Dashboard modules</div>
+              <div class="stat-box"><strong>4</strong> Active projects</div>
+              <div class="stat-box"><strong>1</strong> CEO account</div>
+              <div class="stat-box"><strong>2</strong> Languages</div>
+            </div>
+
+            <div class="card" style="margin-top: 22px;"><div class="card-body">
+              <h3>Access and security</h3>
+              <p>The CEO account is the initial administrator and retains the highest access level. Administrator credentials are configured once through the secure server-side setup command.</p>
+              <p>Dashboard access uses bcrypt password verification, rate-limited sign-in, and secure HttpOnly session cookies. Additional administrator roles and two-factor authentication are not enabled.</p>
+            </div></div>
+
+            <div class="card" style="margin-top: 22px;"><div class="card-body">
+              <h3>Managed modules</h3>
+              <ul class="list">
+                <li>Website Content Management</li>
+                <li>Projects & Portfolio Management</li>
+                <li>Services & Pricing Management</li>
+                <li>News & Announcements</li>
+                <li>Customer Inquiries</li>
+                <li>Contact Submissions</li>
+                <li>English & Sinhala Content Management</li>
+                <li>SEO Management</li>
+                <li>Social Media Links Management</li>
+                <li>Website Analytics</li>
+                <li>Newsletter Management</li>
+                <li>Careers & Job Applications</li>
+                <li>Sub-Company Management</li>
+                <li>Admin & Role Management</li>
+                <li>Activity Logs</li>
+              </ul>
+            </div></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer"><div class="container footer-grid"><div><div class="brand"><img src="/assets/LOGO.jpg" alt="MI CORTEX X INC. logo" /><span>MI CORTEX X INC.</span></div><p>Official website...</p></div><div><h3>Explore</h3><ul class="list"><li><a href="/about.html">About</a></li><li><a href="/services.html">Services</a></li><li><a href="/projects.html">Projects</a></li><li><a href="/contact.html">Contact</a></li></ul></div><div><h3>Company</h3><ul class="list"><li><a href="/faq.html">FAQ</a></li><li><a href="/privacy.html">Privacy Policy</a></li><li><a href="/terms.html">Terms & Conditions</a></li><li><a href="/admin">Admin</a></li></ul></div><div><h3>Contact</h3><ul class="list"><li><a href="mailto:micortexx@gmail.com">micortexx@gmail.com</a></li><li><a href="tel:+94756390621">WhatsApp / Telegram: +94 75 639 0621</a></li><li>Office Address: A/F4/U10, Laksetha Sewana, Maligawatte, Colombo 10, Sri Lanka.</li></ul></div></div><div class="container"><small>© <span id="year"></span> MI CORTEX X INC. All rights reserved.</small></div></footer>
+    <script src="/script.js"></script>
+    <script src="/admin-dashboard-auth.js"></script>
+  </body>
+</html>
