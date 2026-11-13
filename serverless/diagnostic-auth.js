@@ -162,12 +162,15 @@ function makeDiagnosticPage(clientId, noncePath) {
       <h1>Database Connectivity Diagnostic</h1>
       <p>Sign in with the authorized operator account to run the read-only check.</p>
       <div id="google-sign-in"></div>
+      <p id="sign-in-status" role="status" aria-live="polite"></p>
       <pre id="diagnostic-result" aria-live="polite"></pre>
     </main>
     <script nonce="${cspNonce}">
       const clientId = ${safeClientId};
       const noncePath = ${safeNoncePath};
+      const statusView = document.getElementById('sign-in-status');
       const resultView = document.getElementById('diagnostic-result');
+      const showStatus = (message) => { statusView.textContent = message; };
       const showResult = (value) => { resultView.textContent = JSON.stringify(value, null, 2); };
 
       async function startDiagnostic() {
@@ -187,7 +190,13 @@ function makeDiagnosticPage(clientId, noncePath) {
           google.accounts.id.initialize({
             client_id: clientId,
             nonce: challenge.nonce,
-            callback: async ({ credential }) => {
+            callback: async (credentialResponse) => {
+              const credential = credentialResponse && credentialResponse.credential;
+              if (typeof credential !== 'string' || !credential) {
+                showStatus('Google sign-in could not be completed. Please try again.');
+                return;
+              }
+              showStatus('Google response received. Checking authorization...');
               try {
                 const response = await fetch(${JSON.stringify(DIAGNOSTIC_PATH)}, {
                   method: 'POST',
@@ -195,15 +204,25 @@ function makeDiagnosticPage(clientId, noncePath) {
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ credential })
                 });
-                showResult(await response.json());
+                const result = await response.json();
+                showResult(result);
+                if (!response.ok || result.authenticationSucceeded !== true) {
+                  showStatus('Google sign-in could not be verified. Please try again.');
+                  return;
+                }
+                showStatus('Google sign-in was verified. The diagnostic result is shown below.');
               } catch {
+                showStatus('Google sign-in could not be verified. Please try again later.');
                 showResult({ errorCategory: 'diagnostic_unavailable' });
               }
             }
           });
           google.accounts.id.renderButton(document.getElementById('google-sign-in'), {
             theme: 'outline',
-            size: 'large'
+            size: 'large',
+            click_listener: () => {
+              showStatus('Google sign-in was selected. Complete the Google prompt; if none appears, reload and try again.');
+            }
           });
         } catch {
           showResult({ errorCategory: 'diagnostic_unavailable' });

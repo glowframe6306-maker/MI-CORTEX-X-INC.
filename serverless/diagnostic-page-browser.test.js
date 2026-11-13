@@ -58,14 +58,16 @@ function makeGisScript() {
               telemetry.events.push('initialize');
               if (telemetry.initializeThrows) throw new Error('Synthetic initialize failure.');
             },
-            renderButton(container) {
+            renderButton(container, options) {
               telemetry.renderButtonCalls += 1;
+              telemetry.clickListener = options.click_listener;
               telemetry.events.push('renderButton');
               if (telemetry.renderButtonThrows) throw new Error('Synthetic render failure.');
               const button = document.createElement('button');
               button.type = 'button';
               button.dataset.testid = 'mock-google-sign-in';
               button.textContent = 'Mock Google sign in';
+              button.addEventListener('click', () => telemetry.clickListener?.());
               container.appendChild(button);
             },
             prompt() {
@@ -200,7 +202,7 @@ function createFetchMock(window, state, options, cookieJar) {
         throw new Error('Blocked diagnostic POST outside the explicit local callback test.');
       }
       return makeResponse({
-        body: { authenticationSucceeded: false, errorCategory: 'authorization_failed' }
+        body: options.diagnosticResponse || { authenticationSucceeded: false, errorCategory: 'authorization_failed' }
       });
     }
 
@@ -249,6 +251,7 @@ async function createDiagnosticPage(options = {}) {
       callbackCalls: 0,
       options: null,
       callback: null,
+      clickListener: null,
       events: []
     }
   };
@@ -347,6 +350,10 @@ async function waitFor(predicate) {
 
 function resultText(fixture) {
   return fixture.dom.window.document.getElementById('diagnostic-result').textContent;
+}
+
+function statusText(fixture) {
+  return fixture.dom.window.document.getElementById('sign-in-status').textContent;
 }
 
 function hasMockButton(fixture) {
@@ -513,9 +520,34 @@ test('successful initialization registers but does not automatically invoke a cr
   });
 });
 
+test('the supported GIS button click listener gives feedback without submitting a diagnostic request', async () => {
+  await withPage({}, (fixture) => {
+    fixture.dom.window.document.querySelector('[data-testid="mock-google-sign-in"]').click();
+    assert.match(statusText(fixture), /Google sign-in was selected/);
+    assert.equal(fixture.state.telemetry.callbackCalls, 0);
+    assert.equal(fixture.state.diagnosticPosts, 0);
+    assert.equal(fixture.state.tokenVerificationCalls, 0);
+    assert.equal(fixture.state.databaseProbeCalls, 0);
+  });
+});
+
+test('an incomplete GIS credential response is shown safely and never posted', async () => {
+  await withPage({}, async (fixture) => {
+    await fixture.state.telemetry.callback({});
+    assert.equal(statusText(fixture), 'Google sign-in could not be completed. Please try again.');
+    assert.equal(fixture.state.diagnosticPosts, 0);
+    assert.equal(fixture.state.tokenVerificationCalls, 0);
+    assert.equal(fixture.state.databaseProbeCalls, 0);
+  });
+});
+
 test('a synthetic callback credential is confined to the isolated local POST stub', async () => {
-  await withPage({ allowDiagnosticPost: true }, async (fixture) => {
+  await withPage({
+    allowDiagnosticPost: true,
+    diagnosticResponse: { authenticationSucceeded: true, readOnlyQuerySucceeded: true }
+  }, async (fixture) => {
     await fixture.state.telemetry.callback({ credential: TEST_CREDENTIAL });
+    assert.equal(statusText(fixture), 'Google sign-in was verified. The diagnostic result is shown below.');
     const diagnosticRequests = fixture.state.fetchRequests.filter((request) => (
       request.pathname === DIAGNOSTIC_PATH && request.method === 'POST'
     ));
@@ -527,6 +559,26 @@ test('a synthetic callback credential is confined to the isolated local POST stu
     assert.equal(diagnosticRequests[0].origin === TEST_ORIGIN, true);
     assert.equal(fixture.state.unexpectedFetchRequests, 0);
     assert.equal(fixture.state.tokenVerificationCalls, 0);
+    assert.equal(fixture.state.databaseProbeCalls, 0);
+  });
+});
+
+test('a rejected diagnostic authorization response gets a sanitized visible message', async () => {
+  await withPage({ allowDiagnosticPost: true }, async (fixture) => {
+    await fixture.state.telemetry.callback({ credential: TEST_CREDENTIAL });
+    assert.equal(statusText(fixture), 'Google sign-in could not be verified. Please try again.');
+    assert.match(resultText(fixture), /authorization_failed/);
+    assert.equal(fixture.state.diagnosticPosts, 1);
+    assert.equal(fixture.state.databaseProbeCalls, 0);
+  });
+});
+
+test('a diagnostic transport failure gets a sanitized visible message', async () => {
+  await withPage({}, async (fixture) => {
+    await fixture.state.telemetry.callback({ credential: TEST_CREDENTIAL });
+    assert.equal(statusText(fixture), 'Google sign-in could not be verified. Please try again later.');
+    assert.match(resultText(fixture), /diagnostic_unavailable/);
+    assert.equal(fixture.state.blockedDiagnosticPosts, 1);
     assert.equal(fixture.state.databaseProbeCalls, 0);
   });
 });
