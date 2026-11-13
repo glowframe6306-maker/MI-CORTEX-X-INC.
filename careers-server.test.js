@@ -507,3 +507,154 @@ test('local Careers service enforces gates, protects stored data, and supports a
     fs.rmSync(dataDirectory, { recursive: true, force: true });
   }
 });
+
+test('order submissions are idempotent under retries and concurrency while preserving admin workflows', async () => {
+  const dataDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'mi-cortex-orders-'));
+  const environmentNames = [
+    'CAREERS_DATA_DIR',
+    'CAREERS_ENCRYPTION_KEY',
+    'TELEGRAM_BOT_TOKEN',
+    'TELEGRAM_CHAT_ID'
+  ];
+  const originalEnvironment = Object.fromEntries(
+    environmentNames.map((name) => [name, process.env[name]])
+  );
+  const originalFetch = global.fetch;
+  const telegramRequests = [];
+  process.env.CAREERS_DATA_DIR = dataDirectory;
+  process.env.CAREERS_ENCRYPTION_KEY = crypto.randomBytes(32).toString('base64');
+  process.env.TELEGRAM_BOT_TOKEN = 'local-test-token';
+  process.env.TELEGRAM_CHAT_ID = 'local-test-chat';
+
+  let server;
+  let database;
+  try {
+    await createSiteAdmin('ceo.orders', siteAdminPassword);
+    global.fetch = async (input, options) => {
+      if (String(input).startsWith('https://api.telegram.org/')) {
+        telegramRequests.push({ input: String(input), options });
+        return {
+          ok: false,
+          status: 503,
+          json: async () => ({ ok: false })
+        };
+      }
+      return originalFetch(input, options);
+    };
+
+    server = createAppServer();
+    await new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', resolve);
+    });
+    const baseUrl = `http://127.0.0.1:${server.address().port}`;
+    const request = async (route, options = {}, cookie = '') => {
+      const headers = new Headers(options.headers || {});
+      if (options.method && options.method !== 'GET') headers.set('Origin', baseUrl);
+      if (cookie) headers.set('Cookie', cookie);
+      const response = await fetch(`${baseUrl}${route}`, { ...options, headers });
+      return { response, body: await response.json() };
+    };
+    const order = {
+      itemType: 'product',
+      itemName: 'Isolated Idempotency Test Item',
+      itemCategory: 'test',
+      customerName: 'Test Customer',
+      customerEmail: 'idempotency@example.test',
+      customerPhone: '+1 555 123 4567',
+      companyName: 'Test Company',
+      quantity: 1,
+      urgency: 'standard',
+      preferredTimeline: '',
+      budget: '',
+      notes: 'Isolated idempotency test only'
+    };
+    const countOrders = () => database.prepare('SELECT COUNT(*) AS count FROM orders').get().count;
+    const submit = (key, payload = order) => request('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
+      body: JSON.stringify(payload)
+    });
+
+    database = new DatabaseSync(path.join(dataDirectory, 'careers.sqlite'));
+    const missingKey = await request('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(order)
+    });
+    assert.equal(missingKey.response.status, 400, 'order creation requires an idempotency key');
+    assert.equal(countOrders(), 0, 'a request without a key creates no order');
+
+    const firstKey = crypto.randomUUID();
+    const first = await submit(firstKey);
+    assert.equal(first.response.status, 201);
+    assert.equal(countOrders(), 1, 'the first submission creates exactly one database order');
+
+    const retry = await submit(firstKey, { ...order, itemName: 'Changed retry payload' });
+    assert.equal(retry.response.status, 201);
+    assert.deepEqual(retry.body, first.body, 'a repeated key returns the original order result');
+    assert.equal(countOrders(), 1, 'the repeated key does not create another database order');
+    assert.equal(
+      database.prepare('SELECT item_name FROM orders WHERE id = ?').get(first.body.id).item_name,
+      order.itemName,
+      'a retry preserves the original order data'
+    );
+    assert.equal(telegramRequests.length, 1, 'a duplicate retry does not repeat the Telegram notification');
+
+    const concurrentKey = crypto.randomUUID();
+    const concurrent = await Promise.all([submit(concurrentKey), submit(concurrentKey)]);
+    assert.deepEqual(concurrent.map(({ response }) => response.status), [201, 201]);
+    assert.equal(concurrent[0].body.id, concurrent[1].body.id, 'concurrent requests resolve to one order ID');
+    assert.equal(countOrders(), 2, 'two concurrent requests create exactly one additional order');
+    assert.equal(
+      database.prepare('SELECT COUNT(*) AS count FROM order_idempotency_keys WHERE idempotency_key = ?').get(concurrentKey).count,
+      1
+    );
+
+    const repeatOrder = await submit(crypto.randomUUID());
+    assert.equal(repeatOrder.response.status, 201);
+    assert.notEqual(repeatOrder.body.id, first.body.id, 'a new key allows a legitimate repeat order');
+    assert.equal(countOrders(), 3, 'a new key creates one new database order');
+
+    const failedTelegramKey = crypto.randomUUID();
+    const failedTelegramOrder = await submit(failedTelegramKey);
+    assert.equal(failedTelegramOrder.response.status, 201);
+    assert.equal(countOrders(), 4, 'Telegram failure leaves the newly saved order intact');
+    const failedTelegramRetry = await submit(failedTelegramKey);
+    assert.deepEqual(failedTelegramRetry.body, failedTelegramOrder.body);
+    assert.equal(countOrders(), 4, 'retry after Telegram failure neither deletes nor duplicates the order');
+    assert.equal(telegramRequests.length, 4, 'Telegram was attempted once per new order, not per retry');
+
+    const login = await request('/api/site-admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'ceo.orders', password: siteAdminPassword })
+    });
+    assert.equal(login.response.status, 200);
+    const cookie = login.response.headers.get('set-cookie').split(';', 1)[0];
+    const listed = await request('/api/site-admin/orders', {}, cookie);
+    assert.equal(listed.response.status, 200);
+    assert.equal(listed.body.orders.length, 4, 'the admin dashboard API lists each unique saved order');
+    assert.equal(new Set(listed.body.orders.map((savedOrder) => savedOrder.id)).size, 4);
+
+    const update = await request(`/api/site-admin/orders/${first.body.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'confirmed' })
+    }, cookie);
+    assert.equal(update.response.status, 200);
+    assert.deepEqual(update.body, { updated: true, status: 'confirmed' });
+    const updatedList = await request('/api/site-admin/orders', {}, cookie);
+    assert.equal(updatedList.body.orders.find((savedOrder) => savedOrder.id === first.body.id).status, 'confirmed');
+    assert.equal(countOrders(), 4, 'status updates do not alter the order count');
+  } finally {
+    if (server) await new Promise((resolve) => server.close(resolve));
+    if (database) database.close();
+    global.fetch = originalFetch;
+    for (const [name, value] of Object.entries(originalEnvironment)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+    fs.rmSync(dataDirectory, { recursive: true, force: true });
+  }
+});

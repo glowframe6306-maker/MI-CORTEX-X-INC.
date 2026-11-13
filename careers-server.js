@@ -105,6 +105,11 @@ function createDatabase() {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS order_idempotency_keys (
+      idempotency_key TEXT PRIMARY KEY,
+      order_id TEXT NOT NULL UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL
+    );
   `);
   return database;
 }
@@ -557,31 +562,27 @@ function createAppServer() {
 
     if (request.method === 'POST' && url.pathname === '/api/orders') {
       getOrigin(request);
-      const input = validateOrderInput(await readJson(request, MAX_SMALL_BODY_BYTES));
+      const idempotencyKey = request.headers['idempotency-key'];
+      if (typeof idempotencyKey !== 'string'
+        || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) {
+        throw new HttpError(400, 'A valid order submission key is required.');
+      }
+      const rawInput = await readJson(request, MAX_SMALL_BODY_BYTES);
+      const existingOrder = database.prepare(`
+        SELECT order_id AS id FROM order_idempotency_keys WHERE idempotency_key = ?
+      `).get(idempotencyKey);
+      if (existingOrder) {
+        sendJson(response, 201, {
+          id: existingOrder.id,
+          status: 'new',
+          received: true,
+          message: 'Your order request was received. Our team will contact you shortly.'
+        });
+        return;
+      }
+      const input = validateOrderInput(rawInput);
       const now = new Date().toISOString();
       const orderId = crypto.randomUUID();
-      database.prepare(`
-        INSERT INTO orders (
-          id, item_type, item_name, item_category, customer_name, customer_email, customer_phone,
-          company_name, quantity, urgency, preferred_timeline, budget, notes, status, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)
-      `).run(
-        orderId,
-        input.itemType,
-        input.itemName,
-        input.itemCategory || null,
-        input.customerName,
-        input.customerEmail,
-        input.customerPhone,
-        input.companyName || null,
-        input.quantity,
-        input.urgency,
-        input.preferredTimeline || null,
-        input.budget || null,
-        input.notes || null,
-        now,
-        now
-      );
       const orderRecord = {
         id: orderId,
         itemType: input.itemType,
@@ -600,6 +601,52 @@ function createAppServer() {
         createdAt: now,
         updatedAt: now
       };
+      database.exec('BEGIN IMMEDIATE');
+      try {
+        const concurrentOrder = database.prepare(`
+          SELECT order_id AS id FROM order_idempotency_keys WHERE idempotency_key = ?
+        `).get(idempotencyKey);
+        if (concurrentOrder) {
+          database.exec('COMMIT');
+          sendJson(response, 201, {
+            id: concurrentOrder.id,
+            status: 'new',
+            received: true,
+            message: 'Your order request was received. Our team will contact you shortly.'
+          });
+          return;
+        }
+        database.prepare(`
+          INSERT INTO orders (
+            id, item_type, item_name, item_category, customer_name, customer_email, customer_phone,
+            company_name, quantity, urgency, preferred_timeline, budget, notes, status, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)
+        `).run(
+          orderId,
+          input.itemType,
+          input.itemName,
+          input.itemCategory || null,
+          input.customerName,
+          input.customerEmail,
+          input.customerPhone,
+          input.companyName || null,
+          input.quantity,
+          input.urgency,
+          input.preferredTimeline || null,
+          input.budget || null,
+          input.notes || null,
+          now,
+          now
+        );
+        database.prepare(`
+          INSERT INTO order_idempotency_keys (idempotency_key, order_id, created_at)
+          VALUES (?, ?, ?)
+        `).run(idempotencyKey, orderId, now);
+        database.exec('COMMIT');
+      } catch (error) {
+        database.exec('ROLLBACK');
+        throw error;
+      }
       await sendOrderTelegramNotification(orderRecord).catch(() => undefined);
       sendJson(response, 201, {
         id: orderId,

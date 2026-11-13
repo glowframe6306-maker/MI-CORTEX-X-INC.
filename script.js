@@ -1830,6 +1830,7 @@ document.addEventListener('DOMContentLoaded', () => {
       modal.dataset.itemName = '';
       modal.dataset.itemType = '';
       modal.dataset.itemCategory = '';
+      modal.dataset.idempotencyKey = '';
     };
     closeButton.addEventListener('click', close);
     cancelButton.addEventListener('click', close);
@@ -1870,10 +1871,17 @@ document.addEventListener('DOMContentLoaded', () => {
       notice.classList.remove('order-modal__notice--error');
       submitButton.disabled = true;
       try {
+        if (!modal.dataset.idempotencyKey) {
+          modal.dataset.idempotencyKey = window.crypto.randomUUID();
+        }
         const response = await fetch('/api/orders', {
           method: 'POST',
           credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Idempotency-Key': modal.dataset.idempotencyKey
+          },
           body: JSON.stringify(payload)
         });
         const result = await response.json().catch(() => ({}));
@@ -1903,6 +1911,7 @@ document.addEventListener('DOMContentLoaded', () => {
       button.className = 'catalog-item__order';
       button.textContent = 'Order now';
       button.addEventListener('click', () => {
+        orderModal.dataset.idempotencyKey = '';
         const itemName = item.dataset.name || item.querySelector('h3')?.textContent?.trim() || 'Selected item';
         const itemCategory = item.dataset.category || 'products';
         const itemType = (
