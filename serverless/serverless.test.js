@@ -25,7 +25,9 @@ for (const name of [
   'CAREERS_OPEN_AT',
   'CAREERS_RETENTION_DAYS',
   'CAREERS_RECRUITMENT_APPROVED',
-  'CRON_SECRET'
+  'CRON_SECRET',
+  'TELEGRAM_BOT_TOKEN',
+  'TELEGRAM_CHAT_ID'
 ]) {
   previousEnvironment[name] = process.env[name];
 }
@@ -190,9 +192,33 @@ test('database initialization failure reports false init flag without a query', 
   }
 });
 
-async function createContext() {
+async function createContext(options = {}) {
   const database = new PGlite();
   await database.exec(schema);
+  let transactionQueue = Promise.resolve();
+  const handlerDatabase = options.serializeTransactions ? {
+    async query(...args) {
+      let release;
+      const previous = transactionQueue;
+      transactionQueue = new Promise((resolve) => { release = resolve; });
+      await previous;
+      try {
+        return await database.query(...args);
+      } finally {
+        release();
+      }
+    },
+    async connect() {
+      let release;
+      const previous = transactionQueue;
+      transactionQueue = new Promise((resolve) => { release = resolve; });
+      await previous;
+      return {
+        query: database.query.bind(database),
+        release
+      };
+    }
+  } : database;
   const storedBlobs = new Map();
   const deletedBlobs = [];
   let tokenOptions;
@@ -232,16 +258,18 @@ async function createContext() {
     }
   };
   const handler = createServerlessHandler({
-    database,
+    database: handlerDatabase,
     blobs,
     pages: { login: '<h1>login page</h1>', dashboard: '<h1>protected dashboard</h1>' },
-    dummyPasswordHash: dummyCEOHash
+    dummyPasswordHash: dummyCEOHash,
+    telegramFetch: options.telegramFetch
   });
   const createAnotherHandler = () => createServerlessHandler({
-    database,
+    database: handlerDatabase,
     blobs,
     pages: { login: '<h1>login page</h1>', dashboard: '<h1>protected dashboard</h1>' },
-    dummyPasswordHash: dummyCEOHash
+    dummyPasswordHash: dummyCEOHash,
+    telegramFetch: options.telegramFetch
   });
   const request = (pathname, { method = 'GET', body, headers = {}, ip = '192.0.2.1' } = {}) => {
     const requestHeaders = new Headers(headers);
@@ -336,6 +364,267 @@ test('CEO dashboard pages and APIs require the independent CEO session', async (
     });
     assert.equal(logout.status, 200);
     assert.equal((await context.call('/admin/dashboard', { headers: { cookie: login.cookie } })).status, 303);
+  } finally {
+    await closeContext(context);
+  }
+});
+
+test('serverless order API validates, persists idempotently, notifies once, and enforces CEO authorization', async () => {
+  const previousTelegramEnvironment = {
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+    TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID
+  };
+  process.env.TELEGRAM_BOT_TOKEN = 'isolated-test-bot-token';
+  process.env.TELEGRAM_CHAT_ID = 'isolated-test-chat-id';
+  const telegramRequests = [];
+  const telegramFetch = async (url, options) => {
+    telegramRequests.push({ url, body: JSON.parse(options.body) });
+    const failed = telegramRequests.length === 4;
+    return new Response(JSON.stringify({ ok: !failed }), {
+      status: failed ? 503 : 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  };
+  const context = await createContext({ telegramFetch, serializeTransactions: true });
+
+  try {
+    const order = {
+      itemType: 'product',
+      itemName: 'Isolated Serverless Test Product',
+      itemCategory: 'test',
+      customerName: 'Test Customer',
+      customerEmail: 'serverless-order@example.test',
+      customerPhone: '+1 555 123 4567',
+      companyName: 'Test Company',
+      quantity: 1,
+      urgency: 'standard',
+      preferredTimeline: '',
+      budget: '',
+      notes: 'Isolated serverless order test'
+    };
+    const countOrders = async () => (
+      await context.database.query('SELECT COUNT(*)::integer AS count FROM orders')
+    ).rows[0].count;
+    const countKeys = async (key) => (
+      await context.database.query(
+        'SELECT COUNT(*)::integer AS count FROM order_idempotency_keys WHERE idempotency_key = $1',
+        [key]
+      )
+    ).rows[0].count;
+
+    let response = await context.call('/api/orders', { method: 'POST', body: order });
+    assert.equal(response.status, 400, 'a missing idempotency key is rejected');
+    assert.equal(await countOrders(), 0);
+
+    response = await context.call('/api/orders', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': crypto.randomUUID() },
+      body: { ...order, customerName: '  ' }
+    });
+    assert.equal(response.status, 400, 'required customer fields are validated');
+    assert.equal(await countOrders(), 0);
+
+    response = await context.call('/api/orders', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': crypto.randomUUID() },
+      body: { ...order, quantity: 0 }
+    });
+    assert.equal(response.status, 400, 'invalid order payloads are rejected');
+    response = await context.call('/api/orders', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': crypto.randomUUID() },
+      body: { ...order, budget: 50000 }
+    });
+    assert.equal(response.status, 400, 'optional fields with the wrong type are rejected');
+    response = await context.call('/api/orders', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': crypto.randomUUID() },
+      body: { ...order, urgency: 'immediate' }
+    });
+    assert.equal(response.status, 400, 'unsupported urgency values are rejected');
+    assert.equal(await countOrders(), 0);
+
+    const firstKey = crypto.randomUUID();
+    response = await context.call('/api/index?route=%2Fapi%2Forders', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': firstKey },
+      body: order
+    });
+    assert.equal(response.headers.get('content-type'), 'application/json; charset=utf-8');
+    assert.equal(response.status, 201);
+    const firstResult = await response.json();
+    assert.equal(firstResult.status, 'new');
+    assert.equal(await countOrders(), 1);
+    assert.equal(await countKeys(firstKey), 1);
+    assert.equal(telegramRequests.length, 1, 'a successfully persisted new order notifies Telegram once');
+    assert.match(telegramRequests[0].url, /\/botisolated-test-bot-token\/sendMessage$/);
+    assert.equal(telegramRequests[0].body.chat_id, 'isolated-test-chat-id');
+    assert.match(telegramRequests[0].body.text, /Isolated Serverless Test Product/);
+
+    const restartedHandler = context.createAnotherHandler();
+    response = await restartedHandler(context.request('/api/orders', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': firstKey },
+      body: { ...order, itemName: 'Modified retry payload' }
+    }));
+    assert.equal(response.status, 201);
+    assert.deepEqual(await response.json(), firstResult, 'a new handler invocation returns the original result');
+    assert.equal(await countOrders(), 1, 'a same-key retry with changed payload preserves the stored order');
+    assert.equal(telegramRequests.length, 1, 'a persisted retry does not repeat the notification');
+    const storedFirstOrder = await context.database.query(
+      'SELECT item_name FROM orders WHERE id = $1',
+      [firstResult.id]
+    );
+    assert.equal(storedFirstOrder.rows[0].item_name, order.itemName);
+
+    const concurrentKey = crypto.randomUUID();
+    const concurrentResponses = await Promise.all([
+      context.call('/api/orders', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': concurrentKey },
+        body: order
+      }),
+      context.call('/api/orders', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': concurrentKey },
+        body: order
+      })
+    ]);
+    assert.deepEqual(concurrentResponses.map((result) => result.status), [201, 201]);
+    const concurrentResults = await Promise.all(concurrentResponses.map((result) => result.json()));
+    assert.equal(concurrentResults[0].id, concurrentResults[1].id);
+    assert.equal(await countOrders(), 2, 'concurrent same-key requests create one order');
+    assert.equal(await countKeys(concurrentKey), 1);
+    assert.equal(telegramRequests.length, 2, 'concurrent same-key requests notify only once');
+
+    const repeatKey = crypto.randomUUID();
+    response = await context.call('/api/orders', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': repeatKey },
+      body: order
+    });
+    assert.equal(response.status, 201, 'a new key allows a legitimate repeat purchase');
+    assert.notEqual((await response.json()).id, firstResult.id);
+    assert.equal(await countOrders(), 3);
+
+    const failedNotificationKey = crypto.randomUUID();
+    response = await context.call('/api/orders', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': failedNotificationKey },
+      body: order
+    });
+    assert.equal(response.status, 201, 'Telegram failure does not invalidate a saved order');
+    const failedNotificationResult = await response.json();
+    assert.equal(await countOrders(), 4);
+    assert.equal(await countKeys(failedNotificationKey), 1);
+    response = await context.call('/api/orders', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': failedNotificationKey },
+      body: order
+    });
+    assert.deepEqual(await response.json(), failedNotificationResult);
+    assert.equal(await countOrders(), 4, 'retry after Telegram failure does not duplicate or delete the order');
+    assert.equal(telegramRequests.length, 4, 'Telegram failure is not retried for the same key');
+
+    response = await context.call('/api/site-admin/orders');
+    assert.equal(response.status, 401, 'unauthenticated users cannot list customer orders');
+    response = await context.call(`/api/site-admin/orders/${firstResult.id}`, {
+      method: 'PATCH',
+      body: { status: 'confirmed' }
+    });
+    assert.equal(response.status, 401, 'unauthenticated users cannot update order status');
+
+    await context.createAdmin();
+    const login = await signIn(context, '/api/site-admin/login', {
+      username: 'ceo.test',
+      password: siteAdminPassword
+    });
+    assert.equal(login.response.status, 200);
+    response = await context.call('/api/site-admin/orders', {
+      headers: { cookie: login.cookie }
+    });
+    assert.equal(response.status, 200);
+    const listed = await response.json();
+    assert.equal(listed.orders.length, 4);
+    assert.equal(new Set(listed.orders.map((savedOrder) => savedOrder.id)).size, 4);
+
+    response = await context.call('/api/site-admin/orders/not-a-uuid', {
+      method: 'PATCH',
+      headers: { cookie: login.cookie },
+      body: { status: 'confirmed' }
+    });
+    assert.equal(response.status, 400, 'malformed order IDs are rejected');
+    response = await context.call(`/api/site-admin/orders/${firstResult.id}`, {
+      method: 'PATCH',
+      headers: { cookie: login.cookie },
+      body: { status: 'unknown' }
+    });
+    assert.equal(response.status, 400, 'unsupported order statuses are rejected');
+    response = await context.call(`/api/site-admin/orders/${firstResult.id}`, {
+      method: 'PATCH',
+      headers: { cookie: login.cookie },
+      body: { status: 'confirmed' }
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { updated: true, status: 'confirmed' });
+    response = await context.call('/api/site-admin/orders', {
+      headers: { cookie: login.cookie }
+    });
+    const updatedList = await response.json();
+    assert.equal(updatedList.orders.find((savedOrder) => savedOrder.id === firstResult.id).status, 'confirmed');
+    assert.equal(await countOrders(), 4, 'status updates preserve the number of saved orders');
+
+    response = await context.call('/api/orders');
+    assert.equal(response.status, 405, 'known order paths reject unsupported HTTP methods');
+    assert.equal(response.headers.get('allow'), 'POST');
+    response = await context.call('/api/not-a-real-route');
+    assert.equal(response.status, 404, 'unknown routes return a not-found response');
+    assert.deepEqual(await response.json(), { error: 'Not found.' });
+  } finally {
+    await closeContext(context);
+    for (const [name, value] of Object.entries(previousTelegramEnvironment)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+});
+
+test('order persistence rolls back if saving its idempotency key fails', async () => {
+  const context = await createContext();
+  const originalQuery = context.database.query.bind(context.database);
+  let shouldFail = true;
+  context.database.query = (query, ...values) => {
+    if (shouldFail && /INSERT INTO order_idempotency_keys/i.test(query)) {
+      shouldFail = false;
+      return Promise.reject(new Error('simulated idempotency persistence failure'));
+    }
+    return originalQuery(query, ...values);
+  };
+
+  try {
+    const response = await context.call('/api/orders', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': crypto.randomUUID() },
+      body: {
+        itemType: 'product',
+        itemName: 'Rollback Test Product',
+        customerName: 'Test Customer',
+        customerEmail: 'rollback@example.test',
+        customerPhone: '+1 555 123 4567',
+        quantity: 1
+      }
+    });
+    assert.equal(response.status, 500);
+    assert.deepEqual(await response.json(), { error: 'The Careers service encountered an error.' });
+    assert.equal(
+      (await context.database.query('SELECT COUNT(*)::integer AS count FROM orders')).rows[0].count,
+      0,
+      'the order row is rolled back with its failed idempotency record'
+    );
+    assert.equal(
+      (await context.database.query('SELECT COUNT(*)::integer AS count FROM order_idempotency_keys')).rows[0].count,
+      0
+    );
   } finally {
     await closeContext(context);
   }

@@ -1853,6 +1853,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const form = event.currentTarget;
       const notice = modal.querySelector('.order-modal__notice');
       const submitButton = form.querySelector('button[type="submit"]');
+      if (submitButton.disabled) return;
       const payload = {
         itemType: modal.dataset.itemType || 'product',
         itemName: modal.dataset.itemName || 'Product request',
@@ -1870,6 +1871,9 @@ document.addEventListener('DOMContentLoaded', () => {
       notice.textContent = '';
       notice.classList.remove('order-modal__notice--error');
       submitButton.disabled = true;
+      const submitLabel = submitButton.textContent;
+      submitButton.textContent = 'Submitting…';
+      form.setAttribute('aria-busy', 'true');
       try {
         if (!modal.dataset.idempotencyKey) {
           modal.dataset.idempotencyKey = window.crypto.randomUUID();
@@ -1886,9 +1890,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) {
-          throw new Error(result.error || 'The order request could not be submitted.');
+          const message = response.status === 404
+            ? 'Order submission is temporarily unavailable. Please try again later.'
+            : response.status >= 500
+              ? 'We could not save your order right now. Please try again.'
+              : result.error || 'The order request could not be submitted.';
+          throw new Error(message);
         }
-        notice.textContent = `Order request received. Reference: ${result.id || 'pending'}`;
+        if (result.received !== true || typeof result.id !== 'string' || !result.id) {
+          throw new Error('The server did not confirm that your order was saved. Please try again.');
+        }
+        notice.textContent = `Order request received. Reference: ${result.id}`;
         notice.classList.remove('order-modal__notice--error');
         form.reset();
         setTimeout(close, 1800);
@@ -1897,6 +1909,8 @@ document.addEventListener('DOMContentLoaded', () => {
         notice.classList.add('order-modal__notice--error');
       } finally {
         submitButton.disabled = false;
+        submitButton.textContent = submitLabel;
+        form.setAttribute('aria-busy', 'false');
       }
     });
     return modal;
@@ -1938,6 +1952,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const ordersTable = document.querySelector('[data-admin-orders-list]');
   if (ordersTable) {
     const formatStatus = (value) => value ? value.replace(/_/g, ' ') : 'new';
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    })[character]);
     const renderOrders = (orders) => {
       if (!orders.length) {
         ordersTable.innerHTML = '<p class="admin-orders-table__empty">No product or service orders have been submitted yet.</p>';
@@ -1957,11 +1978,11 @@ document.addEventListener('DOMContentLoaded', () => {
           <tbody>
             ${orders.map((order) => `
               <tr>
-                <td><strong>${order.id.slice(0, 8)}</strong><br /><small>${new Date(order.createdAt).toLocaleString()}</small></td>
-                <td>${order.customerName}<br /><small>${order.customerEmail}</small></td>
-                <td><strong>${order.itemName}</strong><br /><small>${order.itemType}</small></td>
-                <td>${order.quantity}</td>
-                <td><span class="admin-orders-table__status">${formatStatus(order.status)}</span></td>
+                <td><strong>${escapeHtml(order.id.slice(0, 8))}</strong><br /><small>${escapeHtml(new Date(order.createdAt).toLocaleString())}</small></td>
+                <td>${escapeHtml(order.customerName)}<br /><small>${escapeHtml(order.customerEmail)}</small></td>
+                <td><strong>${escapeHtml(order.itemName)}</strong><br /><small>${escapeHtml(order.itemType)}</small></td>
+                <td>${escapeHtml(order.quantity)}</td>
+                <td><span class="admin-orders-table__status">${escapeHtml(formatStatus(order.status))}</span></td>
               </tr>
             `).join('')}
           </tbody>
@@ -2081,6 +2102,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.querySelectorAll('form').forEach((form) => {
     form.addEventListener('submit', (event) => {
+      if (form.matches('[data-order-form]')) return;
+
       const honeypot = form.querySelector('[name="website"]');
       if (honeypot && honeypot.value) {
         event.preventDefault();

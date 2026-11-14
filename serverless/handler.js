@@ -32,6 +32,7 @@ const MAX_JSON_BYTES = 16 * 1024;
 const MAX_CLEANUP_BATCHES_PER_RUN = 5;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ORDER_STATUSES = new Set(['new', 'reviewing', 'confirmed', 'in_progress', 'completed', 'cancelled']);
 
 function jsonResponse(status, value, headers = {}) {
   return new Response(JSON.stringify(value), {
@@ -110,6 +111,69 @@ function validateUploadPayload(payload, pathname) {
   return { batchId: data.batchId, documentId: data.documentId, name: data.name.trim() };
 }
 
+function validateOrderInput(input) {
+  const allowedKeys = [
+    'itemType', 'itemName', 'itemCategory', 'customerName', 'customerEmail', 'customerPhone',
+    'companyName', 'quantity', 'urgency', 'preferredTimeline', 'budget', 'notes'
+  ];
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new HttpError(400, 'Order details are required.');
+  }
+  if (Object.keys(input).some((key) => !allowedKeys.includes(key))) {
+    throw new HttpError(400, 'The order contains unsupported fields.');
+  }
+  const text = (value, label, maxLength, required = true) => {
+    if (value !== undefined && typeof value !== 'string') {
+      throw new HttpError(400, `Enter a valid ${label}.`);
+    }
+    const normalized = typeof value === 'string' ? value.trim() : '';
+    if (required && !normalized) throw new HttpError(400, `Enter a valid ${label}.`);
+    if (normalized.length > maxLength) {
+      throw new HttpError(400, `${label[0].toUpperCase()}${label.slice(1)} is too long.`);
+    }
+    return normalized;
+  };
+  const itemType = text(input.itemType, 'item type', 12);
+  if (!['product', 'service'].includes(itemType)) {
+    throw new HttpError(400, 'Choose whether this order is for a product or service.');
+  }
+  const itemName = text(input.itemName, 'item name', 180);
+  const itemCategory = text(input.itemCategory, 'item category', 80, false);
+  const customerName = text(input.customerName, 'customer name', 120);
+  const customerEmail = text(input.customerEmail, 'customer email', 254);
+  if (!EMAIL_PATTERN.test(customerEmail)) throw new HttpError(400, 'Enter a valid customer email address.');
+  const customerPhone = text(input.customerPhone, 'customer phone', 40);
+  if (!/^[+()\d.\-\s]{7,40}$/.test(customerPhone)) {
+    throw new HttpError(400, 'Enter a valid phone number.');
+  }
+  const companyName = text(input.companyName, 'company name', 160, false);
+  const quantity = input.quantity;
+  if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1 || quantity > 9999) {
+    throw new HttpError(400, 'Enter a valid quantity between 1 and 9,999.');
+  }
+  const urgency = text(input.urgency, 'urgency', 40, false) || 'standard';
+  if (!['standard', 'priority', 'urgent'].includes(urgency)) {
+    throw new HttpError(400, 'Choose a valid order urgency.');
+  }
+  const preferredTimeline = text(input.preferredTimeline, 'preferred timeline', 80, false);
+  const budget = text(input.budget, 'budget', 80, false);
+  const notes = text(input.notes, 'notes', 2000, false);
+  return {
+    itemType,
+    itemName,
+    itemCategory,
+    customerName,
+    customerEmail,
+    customerPhone,
+    companyName,
+    quantity,
+    urgency,
+    preferredTimeline,
+    budget,
+    notes
+  };
+}
+
 function createServerlessHandler(options = {}) {
   const database = options.database || getDatabase;
   const blobs = options.blobs || require('@vercel/blob');
@@ -125,8 +189,51 @@ function createServerlessHandler(options = {}) {
   const dummyPasswordHash = options.dummyPasswordHash
     ? Promise.resolve(options.dummyPasswordHash)
     : bcrypt.hash(crypto.randomBytes(32).toString('hex'), 12);
+  const telegramFetch = options.telegramFetch || globalThis.fetch;
 
   const getDb = () => typeof database === 'function' ? database() : database;
+
+  async function sendOrderTelegramNotification(order) {
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.TELEGRAM_CHAT_ID;
+    if (!token || !chatId) return;
+    if (typeof telegramFetch !== 'function') throw new Error('Telegram transport is unavailable.');
+
+    const summary = [
+      'MI CORTEX X INC. order request',
+      `Type: ${order.itemType}`,
+      `Item: ${order.itemName}`,
+      `Customer: ${order.customerName}`,
+      `Email: ${order.customerEmail}`,
+      `Phone: ${order.customerPhone}`,
+      order.companyName ? `Company: ${order.companyName}` : null,
+      `Quantity: ${order.quantity}`,
+      `Urgency: ${order.urgency}`,
+      order.preferredTimeline ? `Preferred timeline: ${order.preferredTimeline}` : null,
+      order.budget ? `Budget: ${order.budget}` : null,
+      order.notes ? `Notes: ${order.notes}` : null
+    ].filter(Boolean).join('\n');
+
+    const response = await telegramFetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: String(chatId),
+        text: summary,
+        disable_web_page_preview: true
+      })
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.ok) throw new Error('Telegram order notification failed.');
+  }
+
+  async function getOrderForIdempotencyKey(db, idempotencyKey) {
+    const result = await db.query(
+      'SELECT order_id FROM order_idempotency_keys WHERE idempotency_key = $1',
+      [idempotencyKey]
+    );
+    return result.rows[0]?.order_id || null;
+  }
 
   async function checkRateLimit(db, scope, request, config, limit = 5, windowMs = 15 * 60 * 1000) {
     const address = request.headers.get('x-real-ip') || 'unknown';
@@ -532,6 +639,121 @@ function createServerlessHandler(options = {}) {
         verifySameOrigin(request);
         await deleteSession(db, request, SITE_ADMIN_COOKIE, config);
         return jsonResponse(200, { signedOut: true }, { 'Set-Cookie': cookie(SITE_ADMIN_COOKIE, '', 0) });
+      }
+      if (path === '/api/orders' && request.method === 'POST') {
+        verifySameOrigin(request);
+        const idempotencyKey = request.headers.get('idempotency-key') || '';
+        if (!UUID_PATTERN.test(idempotencyKey)) {
+          throw new HttpError(400, 'A valid order submission key is required.');
+        }
+        const rawInput = await readJson(request, MAX_JSON_BYTES);
+        const existingOrderId = await getOrderForIdempotencyKey(db, idempotencyKey);
+        if (existingOrderId) {
+          return jsonResponse(201, {
+            id: existingOrderId,
+            status: 'new',
+            received: true,
+            message: 'Your order request was received. Our team will contact you shortly.'
+          });
+        }
+        const order = validateOrderInput(rawInput);
+        const orderId = crypto.randomUUID();
+        const createdAt = new Date();
+        try {
+          await withTransaction(db, async (transaction) => {
+            await transaction.query(`
+              INSERT INTO orders (
+                id, item_type, item_name, item_category, customer_name, customer_email, customer_phone,
+                company_name, quantity, urgency, preferred_timeline, budget, notes, status, created_at, updated_at
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'new', $14, $14)
+            `, [
+              orderId,
+              order.itemType,
+              order.itemName,
+              order.itemCategory || null,
+              order.customerName,
+              order.customerEmail,
+              order.customerPhone,
+              order.companyName || null,
+              order.quantity,
+              order.urgency,
+              order.preferredTimeline || null,
+              order.budget || null,
+              order.notes || null,
+              createdAt
+            ]);
+            await transaction.query(`
+              INSERT INTO order_idempotency_keys (idempotency_key, order_id, created_at)
+              VALUES ($1, $2, $3)
+            `, [idempotencyKey, orderId, createdAt]);
+          });
+        } catch (error) {
+          const concurrentOrderId = await getOrderForIdempotencyKey(db, idempotencyKey);
+          if (!concurrentOrderId) throw error;
+          return jsonResponse(201, {
+            id: concurrentOrderId,
+            status: 'new',
+            received: true,
+            message: 'Your order request was received. Our team will contact you shortly.'
+          });
+        }
+
+        try {
+          await sendOrderTelegramNotification({ ...order, id: orderId });
+        } catch {
+          console.warn('Telegram order notification failed.');
+        }
+        return jsonResponse(201, {
+          id: orderId,
+          status: 'new',
+          received: true,
+          message: 'Your order request was received. Our team will contact you shortly.'
+        });
+      }
+      if (path === '/api/site-admin/orders' && request.method === 'GET') {
+        await requireSession(db, request, 'site_admin', SITE_ADMIN_COOKIE, config);
+        const result = await db.query(`
+          SELECT id, item_type AS "itemType", item_name AS "itemName",
+            item_category AS "itemCategory", customer_name AS "customerName",
+            customer_email AS "customerEmail", customer_phone AS "customerPhone",
+            company_name AS "companyName", quantity, urgency,
+            preferred_timeline AS "preferredTimeline", budget, notes, status,
+            created_at AS "createdAt", updated_at AS "updatedAt"
+          FROM orders ORDER BY created_at DESC, id
+        `);
+        return jsonResponse(200, {
+          orders: result.rows.map((row) => ({
+            ...row,
+            createdAt: serializeDate(row.createdAt),
+            updatedAt: serializeDate(row.updatedAt)
+          }))
+        });
+      }
+      const orderStatusMatch = path.match(/^\/api\/site-admin\/orders\/([^/]+)$/);
+      if (orderStatusMatch && request.method === 'PATCH') {
+        await requireSession(db, request, 'site_admin', SITE_ADMIN_COOKIE, config);
+        verifySameOrigin(request);
+        const orderId = orderStatusMatch[1];
+        if (!UUID_PATTERN.test(orderId)) throw new HttpError(400, 'A valid order ID is required.');
+        const input = await readJson(request, MAX_JSON_BYTES);
+        if (!input || typeof input.status !== 'string' || !ORDER_STATUSES.has(input.status)) {
+          throw new HttpError(400, 'Choose a valid order status.');
+        }
+        const result = await db.query(
+          'UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING id',
+          [input.status, orderId]
+        );
+        if (!result.rows.length) throw new HttpError(404, 'Order not found.');
+        return jsonResponse(200, { updated: true, status: input.status });
+      }
+      if (path === '/api/orders') {
+        throw new HttpError(405, 'Method not allowed.', { Allow: 'POST' });
+      }
+      if (path === '/api/site-admin/orders') {
+        throw new HttpError(405, 'Method not allowed.', { Allow: 'GET' });
+      }
+      if (/^\/api\/site-admin\/orders\/[^/]+$/.test(path)) {
+        throw new HttpError(405, 'Method not allowed.', { Allow: 'PATCH' });
       }
       if (path === '/api/careers/status' && request.method === 'GET') {
         const open = await isRecruitmentOpen(config);

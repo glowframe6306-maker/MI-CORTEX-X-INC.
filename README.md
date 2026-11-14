@@ -87,6 +87,8 @@ Deployment configuration:
 
 The serverless APIs use Neon PostgreSQL. Session tokens are random, held in `HttpOnly`, `Secure`, `SameSite=Strict` cookies, and stored as keyed hashes in PostgreSQL. Login rate limits are also stored in PostgreSQL and shared across function instances. Applicant fields and document metadata are encrypted with AES-256-GCM. Applicant PDFs use direct client-to-Blob uploads, are validated server-side, and are served only after server-side Careers Admin authorization. The Blob store must be created with **Private** access; public Blob stores are not supported for applicant documents.
 
+The product/service order form submits to the same-origin `POST /api/orders` route. Orders and their UUID idempotency keys are committed together in PostgreSQL before a success response is returned; Telegram notification is attempted only after commit. CEO order administration uses the authenticated `GET /api/site-admin/orders` and `PATCH /api/site-admin/orders/:id` routes. The Vercel rewrite sends these routes to the shared `api/index.mjs` function.
+
 Required Vercel Environment Variable names:
 
 - `DATABASE_URL`
@@ -96,6 +98,8 @@ Required Vercel Environment Variable names:
 - `BLOB_STORE_ID` (provided when the private store is connected)
 - `VERCEL_OIDC_TOKEN` (provided by Vercel for private Blob reads and deletes)
 - `CRON_SECRET`
+- `TELEGRAM_BOT_TOKEN` (required for order notifications)
+- `TELEGRAM_CHAT_ID` (required for order notifications)
 - `CAREERS_OPEN_AT` (optional; defaults to 1 January 2029, Asia/Colombo)
 - `CAREERS_RECRUITMENT_APPROVED` (optional; must be exactly `true` to enable recruitment after the opening date)
 - `CAREERS_RETENTION_DAYS` (optional; defaults to 90 and is limited to 30–365)
@@ -105,7 +109,7 @@ Connect the private Blob store to the Vercel project so Vercel provides `BLOB_ST
 Provisioning is intentionally manual and is not run by the build or deployment:
 
 1. Create a Neon database and a private Vercel Blob store in the approved environment; do not point setup commands at production without separate approval.
-2. Set `DATABASE_URL` and run `npm run careers:serverless:migrate` to create the schema only. This command does not import the local SQLite database.
+2. Set `DATABASE_URL` and run `npm run careers:serverless:migrate` to create the schema only. This command does not import the local SQLite database. The schema includes persistent product/service order and idempotency tables; applying it to an existing production database is a migration and requires separate approval.
 3. Set `CAREERS_ENCRYPTION_KEY` and `SESSION_SECRET` to independently generated base64-encoded 32-byte keys; retain secure backups because existing encrypted applicant records cannot be decrypted without the original key. In PowerShell, assign independent generated values without displaying them:
    ```powershell
    $env:CAREERS_ENCRYPTION_KEY = node -p "require('node:crypto').randomBytes(32).toString('base64')"
@@ -114,6 +118,8 @@ Provisioning is intentionally manual and is not run by the build or deployment:
 4. With the approved database selected, run `npm run careers:serverless:provision` in an interactive PowerShell terminal. Choose `CEO` or `Careers`, then enter and confirm the password at the hidden prompts. Each role has a one-account-only constraint; provisioning will not overwrite an existing account.
 5. Connect the private Blob store to the Vercel project and set the Environment Variables above. Keep recruitment disabled until the company separately authorizes an opening date and approval.
 6. Review the build and deploy through the organization's approved Vercel process. This work does not create resources, change project settings, or deploy.
+
+For an existing production database that needs only the order tables, do not use the full-schema migration as a shortcut. First run `scripts/inspect-production-schema.mjs` only with a separately verified `READONLY_DATABASE_URL`, then compare its metadata report against `scripts/orders-only-migration.review.sql`. `READONLY_DATABASE_URL` is never substituted with `DATABASE_URL`. The review SQL is not executed by the application or build; confirm there are no conflicting objects and obtain separate migration approval before applying it.
 
 ### Existing local-data migration
 
