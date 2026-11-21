@@ -1,0 +1,8 @@
+node_modules/
+.data/
+.env
+.env.local
+*.log
+coverage/
+.backups/
+*.tmp

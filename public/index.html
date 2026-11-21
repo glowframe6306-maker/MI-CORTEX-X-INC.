@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MI CORTEX Global Core</title>
+  <style>
+    :root{--navy:#07111f;--panel:#0d1a2b;--line:#1d3150;--blue:#55aaff;--gold:#d6b36a;--text:#edf4ff;--muted:#93a8c2;--green:#58d68d}
+    *{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#050b14,#0a1626);color:var(--text);font-family:"Segoe UI",sans-serif}
+    header{height:68px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:#07111fe8}h1{font-size:18px;margin:0}.brand{display:flex;align-items:center;gap:10px}.brandmark{width:32px;height:32px;border:1px solid var(--gold);display:grid;place-items:center;color:var(--gold);font-weight:800}
+    main{padding:24px;max-width:1440px;margin:auto}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}.card small{color:var(--muted);text-transform:uppercase}.card strong{display:block;font-size:28px;margin-top:8px}.section{margin-top:18px}.section h2{font-size:14px;margin:0 0 10px}.table{border:1px solid var(--line);border-radius:8px;overflow:hidden}.row{display:grid;grid-template-columns:2fr 1fr 1fr;padding:12px 14px;border-bottom:1px solid var(--line);gap:12px}.row:last-child{border:0}.status{color:var(--green)}.muted{color:var(--muted)}
+    @media(max-width:800px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.row{grid-template-columns:1fr}.brand .tagline{display:none}}
+  </style>
+</head>
+<body>
+<header><div class="brand"><div class="brandmark">M</div><div><h1>MI CORTEX GLOBAL CORE</h1><div class="tagline muted">ONE ECOSYSTEM. EVERYTHING CONNECTED.</div></div></div><div class="status" id="health">Checking…</div></header>
+<main>
+  <div class="grid"><div class="card"><small>Connected projects</small><strong id="projects">—</strong></div><div class="card"><small>Shared records</small><strong id="records">—</strong></div><div class="card"><small>Files</small><strong id="files">—</strong></div><div class="card"><small>Sync events</small><strong id="events">—</strong></div></div>
+  <section class="card section"><h2>Connected Projects</h2><div class="table" id="projectTable"><div class="row muted"><span>Project</span><span>Status</span><span>Last sync</span></div></div></section>
+  <section class="card section"><h2>Recent Activity</h2><div class="table" id="auditTable"><div class="row muted"><span>Action</span><span>Project</span><span>Time</span></div></div></section>
+</main>
+<script>
+async function refresh(){try{const health=await fetch('/api/health').then(r=>r.json());document.getElementById('health').textContent=health.ready?'Core online':'Core offline'}catch(_){document.getElementById('health').textContent='Core offline'}}
+refresh();setInterval(refresh,10000);
+</script>
+</body>
+</html>
