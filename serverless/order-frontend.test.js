@@ -187,3 +187,36 @@ test('CEO order list renders customer-provided content as text', async () => {
     dom.window.close();
   }
 });
+
+test('product catalog items have no order buttons while service ordering remains available', async () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'services.html'), 'utf8');
+  const dom = new JSDOM(html, {
+    runScripts: 'outside-only',
+    url: 'https://mi-cortex-test.example/services.html'
+  });
+  const ready = new Promise((resolve) => {
+    dom.window.document.addEventListener('DOMContentLoaded', resolve, { once: true });
+  });
+
+  try {
+    dom.window.eval(script);
+    await ready;
+
+    const document = dom.window.document;
+    const products = [...document.querySelectorAll('#catalog-products .catalog-item')];
+    const services = [...document.querySelectorAll('#catalog-services .catalog-item')];
+    const orderButtonSelector = '.catalog-item__order';
+
+    assert.ok(products.length > 0);
+    assert.ok(services.length > 0);
+    assert.equal(products.filter((item) => item.querySelector(orderButtonSelector)).length, 0);
+    assert.equal(services.filter((item) => item.querySelector(orderButtonSelector)).length, services.length);
+
+    services[0].querySelector(orderButtonSelector).click();
+    const modal = document.querySelector('#mi-cortex-order-modal');
+    assert.equal(modal.dataset.itemType, 'service');
+    assert.equal(modal.dataset.itemName, services[0].dataset.name);
+  } finally {
+    dom.window.close();
+  }
+});

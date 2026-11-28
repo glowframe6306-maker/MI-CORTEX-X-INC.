@@ -1917,7 +1917,7 @@ document.addEventListener('DOMContentLoaded', () => {
   })();
 
   const attachOrderButtons = () => {
-    const items = Array.from(document.querySelectorAll('.catalog-item'));
+    const items = Array.from(document.querySelectorAll('.catalog-item[data-category="services"]'));
     items.forEach((item) => {
       if (item.querySelector('.catalog-item__order')) return;
       const button = document.createElement('button');
